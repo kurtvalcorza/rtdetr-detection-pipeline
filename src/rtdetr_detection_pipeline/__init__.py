@@ -1,0 +1,41 @@
+"""DIMER inference package for the pinned ``PekingU/rtdetr_r50vd`` checkpoint."""
+
+from .pipeline import (
+    DEFAULT_WEIGHTS_DIR,
+    DETECTION_THRESHOLD,
+    INPUT_SCHEMA,
+    LABELS,
+    MAX_DETECTIONS,
+    MAX_IMAGE_SIDE,
+    MIN_IMAGE_SIDE,
+    MODEL_ID,
+    MODEL_KEY,
+    MODEL_LICENSE,
+    MODEL_REVISION,
+    RTDetrDetectionPipeline,
+    box_iou,
+    evaluation_report,
+    stage_missing_files,
+    validate_inputs,
+    verify_snapshot,
+)
+
+__all__ = [
+    "DEFAULT_WEIGHTS_DIR",
+    "DETECTION_THRESHOLD",
+    "INPUT_SCHEMA",
+    "LABELS",
+    "MAX_DETECTIONS",
+    "MAX_IMAGE_SIDE",
+    "MIN_IMAGE_SIDE",
+    "MODEL_ID",
+    "MODEL_KEY",
+    "MODEL_LICENSE",
+    "MODEL_REVISION",
+    "RTDetrDetectionPipeline",
+    "box_iou",
+    "evaluation_report",
+    "stage_missing_files",
+    "validate_inputs",
+    "verify_snapshot",
+]
