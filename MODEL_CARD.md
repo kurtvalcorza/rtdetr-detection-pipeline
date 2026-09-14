@@ -7,7 +7,7 @@ date_published: "2024-05-29"
 date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt` 2024-05-29T01:36:24Z, https://huggingface.co/api/models/PekingU/rtdetr_r50vd — the Transformers-format conversion); the RT-DETR paper is arXiv:2304.08069 (2023-04) and the pinned revision is the Hub's `main` as of 2026-09-14"
 ---
 
-# RT-DETR R50-VD, COCO (DIMER package v0.1.0) — Real-Time Object Detection (Inference)
+# RT-DETR R50-VD, COCO — Real-Time Object Detection (Inference)
 
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-PekingU%2Frtdetr__r50vd-ffcc4d?style=flat)](https://huggingface.co/PekingU/rtdetr_r50vd)
 [![Upstream GitHub](https://img.shields.io/badge/Upstream%20GitHub-lyuwenyu%2FRT--DETR-181717?style=flat&logo=github&logoColor=white)](https://github.com/lyuwenyu/RT-DETR)
