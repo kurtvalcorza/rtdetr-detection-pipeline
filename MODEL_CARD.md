@@ -2,6 +2,7 @@
 license: apache-2.0
 model_card_spec: "1.1"
 pipeline_tag: object-detection
+task: "Object Detection"
 base_model: PekingU/rtdetr_r50vd
 date_published: "2024-05-29"
 date_published_source: "Hugging Face Hub repository creation date of the exact hosted checkpoint (`createdAt` 2024-05-29T01:36:24Z, https://huggingface.co/api/models/PekingU/rtdetr_r50vd — the Transformers-format conversion); the RT-DETR paper is arXiv:2304.08069 (2023-04) and the pinned revision is the Hub's `main` as of 2026-09-14"
