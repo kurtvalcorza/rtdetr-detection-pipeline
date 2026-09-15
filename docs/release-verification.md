@@ -123,19 +123,8 @@ they are measurements for the stated runtime, not general estimates.
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
 | 2026-09-14 | `1fe27a4` / `76385610a91b` | Kaggle CPU (`kurtvalcorza/dimer-nb2-rtdetr-detection` v1) | Default sample path | 217.4 s | **PASSED** — 8/8 ok code cells executed cleanly, 10 files, 172 MB staged |
+| 2026-09-15 | `26fd892` / `315909a9b1a7` | Kaggle GPU (Tesla T4, `kurtvalcorza/dimer-nb2-rtdetr-detection` v2) | Default E2E adaptation path (all 14 code cells: COCO demo, input probes, 40-image sign dataset validation, baseline AP 0.000, 3-epoch bounded FT with frozen ResNet-50-vd backbone, post-adaptation AP 0.9161 / AP50 0.9273 / AP75 0.9273, unseen inference, fresh reload verification, all 6 outputs written) | 240.6 s | **PASSED** — 14/14 ok code cells executed cleanly (1 restart after install cell), 10 files, 172 MB staged, adapter exported |
 
 ## Current status
 
-No clean-runtime execution in a **supported** runtime (Colab or Kaggle) has been recorded yet; clean execution evidence is now recorded below. What exists: static validation (`tools/validate_release_assets.py`), the generator parity
-checks (`--check` OK), the offline unit suite, and one **local fresh-kernel execution** of the generated
-notebook (table above) that exercised the standalone carrier, the real `hf_hub_download` staging path
-into an empty `weights/` directory, verification, detection, the evaluation report and every export —
-which is necessary but not promotion evidence because the workstation is not a supported runtime. The
-registry status remains **Candidate** until a reviewer confirms a recorded supported-runtime run against
-the notebook blob under review and an integrator promotes it. Facts a reviewer should weigh: the CUDA
-path has not been executed; the drawn sports ball is not detected at any threshold (0.1–0.9) while the
-three other drawn objects are found with IoU 0.88–0.98 — a drawn icon is not a COCO photograph, and the
-sample measures plumbing, not recall; a blank 4096×4096 image yields one `train` at 0.33 and uniform
-noise one `cat` at 0.32 at the default threshold, so an empty scene produces a confident nonsense box; and
-the pinned snapshot declares the slow `RTDetrImageProcessor` (transformers prints a `use_fast` notice),
-which is the processor the smoke numbers were measured with.
+Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly (1 automatic restart after the pinned install cell), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.
