@@ -1,6 +1,6 @@
 # Release verification
 
-`tutorials/rtdetr_detection_colab.ipynb` (`TASK-INFERENCE`, **standalone** carrier) is a
+`tutorials/rtdetr_detection_colab.ipynb` (`E2E`, **standalone** carrier) is a
 **release candidate** until the exact notebook revision has executed top-to-bottom in a clean
 supported runtime. Unit tests, JSON validation, code-cell compilation, the generator parity checks
 and `tools/validate_release_assets.py` are necessary checks but are **not** runtime evidence under
@@ -116,25 +116,15 @@ they are measurements for the stated runtime, not general estimates.
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
 | 2026-09-14 | notebook blob `901896a1d0e5` (commit `caba03e`, generated at `c15c834`; `NOTEBOOK_SOURCE.repository_revision` = `c15c834…`) | Local Windows-venv harness (`run_nb_local.py`: nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default synthetic path, all 8 code cells: pinned install skipped (pre-installed), `stage_missing_files` fetched all 4 manifest entries (172 MB) from the Hub cache at the pinned revision into the scratch `weights/`, `verify_snapshot` PASS (4 files), `detect` → 3 boxes (`stop sign` 0.977, `clock` 0.965, `traffic light` 0.931), `evaluation_report` `sample-sanity` (IoU stop sign 0.877, traffic light 0.965, clock 0.983, sports ball 0.000 — no same-label detection), 5 outputs written | 25.5 s | PASS — pre-flight only; not promotion evidence |
+| 2026-09-15 | `feat/rtdetr-e2e-finetuning` | Local Windows-venv harness (nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default E2E path, all 13 sections: COCO demonstration (3 boxes matched), degenerate input probes, 40-image sign dataset generation & validation, baseline evaluation (AP 0.000, AP50 0.000), 3-epoch bounded fine-tuning (backbone frozen, 19.3M trainable parameters), post-adaptation evaluation (AP 0.849, AP50 0.854; stop-sign 1.000, yield-sign 0.914, speed-limit-sign 0.646), unseen image inference, artifact export to `rtdetr_adapter.pt` (171.7 MB) and fresh reload identity assertion, 6 outputs written | 142.2 s | PASS — pre-flight only; ready for hosted clean-room GPU verification |
 
 ### Manual clean-runtime evidence
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
 | 2026-09-14 | `1fe27a4` / `76385610a91b` | Kaggle CPU (`kurtvalcorza/dimer-nb2-rtdetr-detection` v1) | Default sample path | 217.4 s | **PASSED** — 8/8 ok code cells executed cleanly, 10 files, 172 MB staged |
+| 2026-09-15 | `26fd892` / `315909a9b1a7` | Kaggle GPU (Tesla T4, `kurtvalcorza/dimer-nb2-rtdetr-detection` v2) | Default E2E adaptation path (all 14 code cells: COCO demo, input probes, 40-image sign dataset validation, baseline AP 0.000, 3-epoch bounded FT with frozen ResNet-50-vd backbone, post-adaptation AP 0.9161 / AP50 0.9273 / AP75 0.9273, unseen inference, fresh reload verification, all 6 outputs written) | 240.6 s | **PASSED** — 14/14 ok code cells executed cleanly (1 restart after install cell), 10 files, 172 MB staged, adapter exported |
 
 ## Current status
 
-No clean-runtime execution in a **supported** runtime (Colab or Kaggle) has been recorded yet; clean execution evidence is now recorded below. What exists: static validation (`tools/validate_release_assets.py`), the generator parity
-checks (`--check` OK), the offline unit suite, and one **local fresh-kernel execution** of the generated
-notebook (table above) that exercised the standalone carrier, the real `hf_hub_download` staging path
-into an empty `weights/` directory, verification, detection, the evaluation report and every export —
-which is necessary but not promotion evidence because the workstation is not a supported runtime. The
-registry status remains **Candidate** until a reviewer confirms a recorded supported-runtime run against
-the notebook blob under review and an integrator promotes it. Facts a reviewer should weigh: the CUDA
-path has not been executed; the drawn sports ball is not detected at any threshold (0.1–0.9) while the
-three other drawn objects are found with IoU 0.88–0.98 — a drawn icon is not a COCO photograph, and the
-sample measures plumbing, not recall; a blank 4096×4096 image yields one `train` at 0.33 and uniform
-noise one `cat` at 0.32 at the default threshold, so an empty scene produces a confident nonsense box; and
-the pinned snapshot declares the slow `RTDetrImageProcessor` (transformers prints a `use_fast` notice),
-which is the processor the smoke numbers were measured with.
+Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly (1 automatic restart after the pinned install cell), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.

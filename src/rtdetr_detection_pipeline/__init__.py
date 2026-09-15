@@ -1,8 +1,11 @@
-"""DIMER inference package for the pinned ``PekingU/rtdetr_r50vd`` checkpoint."""
+"""DIMER real-time object detection and bounded fine-tuning package for RT-DETR R50-VD."""
 
 from .pipeline import (
+    ARTIFACT_FORMAT,
+    COCO_IOU_THRESHOLDS,
     DEFAULT_WEIGHTS_DIR,
     DETECTION_THRESHOLD,
+    EVAL_DETECTION_THRESHOLD,
     INPUT_SCHEMA,
     LABELS,
     MAX_DETECTIONS,
@@ -13,16 +16,29 @@ from .pipeline import (
     MODEL_LICENSE,
     MODEL_REVISION,
     RTDetrDetectionPipeline,
+    average_precision,
     box_iou,
     evaluation_report,
     stage_missing_files,
+    validate_dataset,
     validate_inputs,
     verify_snapshot,
 )
+from .samples import (
+    SIGN_CLASSES,
+    blank_scene,
+    noise_scene,
+    sign_dataset,
+    split_dataset,
+    tutorial_scene,
+)
 
 __all__ = [
+    "ARTIFACT_FORMAT",
+    "COCO_IOU_THRESHOLDS",
     "DEFAULT_WEIGHTS_DIR",
     "DETECTION_THRESHOLD",
+    "EVAL_DETECTION_THRESHOLD",
     "INPUT_SCHEMA",
     "LABELS",
     "MAX_DETECTIONS",
@@ -33,9 +49,17 @@ __all__ = [
     "MODEL_LICENSE",
     "MODEL_REVISION",
     "RTDetrDetectionPipeline",
+    "SIGN_CLASSES",
+    "average_precision",
+    "blank_scene",
     "box_iou",
     "evaluation_report",
+    "noise_scene",
+    "sign_dataset",
+    "split_dataset",
     "stage_missing_files",
+    "tutorial_scene",
+    "validate_dataset",
     "validate_inputs",
     "verify_snapshot",
 ]

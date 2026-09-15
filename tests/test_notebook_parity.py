@@ -48,29 +48,55 @@ def _source(cell: dict) -> str:
     return "".join(src) if isinstance(src, list) else src
 
 
-def test_par1_embedded_module_equals_repository_module(notebook: dict) -> None:
-    tagged = [
+REWRITES = TEMPLATE.get("rewrites", getattr(build, "DEFAULT_REWRITES", getattr(build, "REWRITES", ())))
+PKG_DIR = ROOT / "src" / TEMPLATE["package"]
+
+
+@pytest.fixture(scope="module")
+def context() -> dict:
+    return build.load_context(ROOT, TEMPLATE)
+
+
+def _tagged(notebook: dict) -> list[dict]:
+    return [
         c for c in _cells(notebook, "code") if c.get("metadata", {}).get("dimer", {}).get("embedded_module")
     ]
-    assert len(tagged) == 1, "exactly one cell must be tagged metadata.dimer.embedded_module"
-    cell = tagged[0]
-    assert cell["metadata"]["dimer"]["embedded_module"] == f"src/{TEMPLATE['package']}/pipeline.py"
-    expected = build.apply_rewrites(MODULE.read_text(encoding="utf-8"), REWRITES)
-    drifted = "embedded module drifted from src/; regenerate the notebook"
-    assert _source(cell).rstrip("\n") + "\n" == expected, drifted
 
 
-REWRITES = TEMPLATE.get("rewrites", build.REWRITES)  # a template may declare its own rules (generator /2)
+def test_par1_every_module_is_carried_in_dependency_order(notebook: dict, context: dict) -> None:
+    tagged = _tagged(notebook)
+    names = [c["metadata"]["dimer"]["embedded_module"] for c in tagged]
+    assert names == context["module_rels"], "carried modules differ from the generator's dependency order"
+    assert len(names) == len(TEMPLATE["modules"])
 
 
-def test_par1_rewrite_rules_are_the_only_difference() -> None:
-    module = MODULE.read_text(encoding="utf-8")
-    rewritten = build.apply_rewrites(module, REWRITES)
-    diff = [(a, b) for a, b in zip(module.splitlines(), rewritten.splitlines(), strict=True) if a != b]
-    assert len(diff) == len(REWRITES)
-    for original, replaced in diff:
-        assert "__file__" in original, original
-        assert "__file__" not in replaced and "standalone rewrite" in replaced, replaced
+def test_par1_each_carried_cell_equals_its_repository_module(notebook: dict, context: dict) -> None:
+    texts = {m: (PKG_DIR / m).read_text(encoding="utf-8") for m in context["modules"]}
+    expected = build.apply_rewrites(texts, REWRITES)
+    for cell, module in zip(_tagged(notebook), context["modules"], strict=True):
+        assert _source(cell).rstrip("\n") + "\n" == expected[module], (
+            f"embedded {module} drifted from src/; regenerate the notebook"
+        )
+
+
+def test_par1_each_carried_cell_records_its_own_module_digest(notebook: dict, context: dict) -> None:
+    for cell in _tagged(notebook):
+        meta = cell["metadata"]["dimer"]
+        assert meta["module_sha256"] == context["per_module_sha256"][meta["embedded_module"]]
+
+
+def test_par1_rewrite_rules_are_the_only_difference(context: dict) -> None:
+    texts = {m: (PKG_DIR / m).read_text(encoding="utf-8") for m in context["modules"]}
+    rewritten = build.apply_rewrites(dict(texts), REWRITES)
+    changed: list[tuple[str, str]] = []
+    for module, original in texts.items():
+        for a, b in zip(original.splitlines(), rewritten[module].splitlines(), strict=False):
+            if a != b:
+                changed.append((a, b))
+    rewrite_lines = [(a, b) for a, b in changed if "standalone rewrite" in b and "__file__" in a]
+    import_lines = [(a, b) for a, b in changed if a.lstrip().startswith("from .")]
+    assert len(rewrite_lines) == len(REWRITES)
+    assert changed and len(rewrite_lines) + len(import_lines) == len(changed), changed
 
 
 def test_par2_inline_manifest_and_pins_match_repository(notebook: dict) -> None:

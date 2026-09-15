@@ -11,7 +11,6 @@ the release gate is defined in docs/release-verification.md.
 from __future__ import annotations
 
 import ast
-import hashlib
 import importlib.util
 import io
 import json
@@ -23,38 +22,43 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "rtdetr_detection_pipeline"
 REPO_NAME = "rtdetr-detection-pipeline"
 NOTEBOOK_NAME = "rtdetr_detection_colab.ipynb"
-EXPECTED_PROFILE = "TASK-INFERENCE"
+EXPECTED_PROFILE = "E2E"
 EXPECTED_MODEL_ID = "PekingU/rtdetr_r50vd"
 PIPELINE_CLASS = "RTDetrDetectionPipeline"
 # Extra 40-hex commits the docs may legitimately cite (none yet).
 KNOWN_SHAS: frozenset[str] = frozenset(())
 
 # NOTEBOOK_SPEC 2.0 §10.3: BYOD is gated off by default so the sample path runs top-to-bottom.
-BYOD_GATES = ("USE_BYOD",)
+BYOD_GATES = ("USE_BYOD_IMAGE", "USE_BYOD_DATASET")
 
 EXPECTED_OUTPUTS = (
-    "outputs/rtdetr_detection_input_manifest.json",
-    "outputs/rtdetr_detection_evaluation_report.json",
-    "outputs/rtdetr_detection_result.json",
-    "outputs/rtdetr_detection_detections.csv",
-    "outputs/rtdetr_detection_annotated.png",
+    "rtdetr_detection_input_manifest.json",
+    "rtdetr_detection_evaluation_report.json",
+    "rtdetr_detection_result.json",
+    "rtdetr_detection_detections.csv",
+    "rtdetr_detection_annotated.png",
+    "rtdetr_adapter.pt",
 )
 
 CODE_MARKERS = (
-    "input_manifest = validate_inputs(image, threshold=threshold, names=[image_name])",
-    "validate_inputs(image, threshold=1.5)",
-    "result = pipe.detect(image, threshold=threshold)",
-    "report = evaluation_report(result, drawn_boxes, sample_kind=sample_kind)",
-    "print({'ceilings': {'MIN_IMAGE_SIDE': MIN_IMAGE_SIDE, 'MAX_IMAGE_SIDE': MAX_IMAGE_SIDE, 'MAX_DETECTIONS': MAX_DETECTIONS, 'n_labels': len(LABELS), 'DETECTION_THRESHOLD': DETECTION_THRESHOLD}})",
-    "print({'LABELS': list(LABELS)})",
+    "scene, references = tutorial_scene()",
+    "input_manifest = validate_inputs(scene, threshold=threshold, names=['tutorial-scene'])",
+    "coco_result = pipe.detect(scene, threshold=threshold)",
+    "coco_report = evaluation_report(coco_result, references, sample_kind='synthetic')",
     "threshold = 0.3",
-    "def synthetic_scene(width=640, height=480):",
-    "refs['sports ball'] = [[cx - r, cy - r, cx + r, cy + r]]",
-    "image, drawn_boxes = synthetic_scene()",
-    "hashlib.sha256(np.asarray(image.convert('RGB')).tobytes()).hexdigest()",
-    "result['threshold']",
-    "annotated.save('outputs/rtdetr_detection_annotated.png')",
-    "writer.writerow(['image', 'rank', 'label', 'score', 'x0', 'y0', 'x1', 'y1'])",
+    "('blank', blank_scene()), ('noise', noise_scene(0))",
+    "records = sign_dataset(N_IMAGES, seed=DATASET_SEED)",
+    "dataset_manifest = validate_dataset(records, SIGN_CLASSES, epochs=EPOCHS)",
+    "train_records, held_out = split_dataset(records, train_fraction=1.0 - HOLDOUT, seed=SEED)",
+    "adapter = RTDetrDetectionPipeline.from_pretrained(weights_dir=WEIGHTS_DIR, class_names=SIGN_CLASSES, seed=SEED)",
+    "baseline = adapter.evaluate(held_out)",
+    "adapter.finetune(",
+    "freeze_backbone=FREEZE_BACKBONE,",
+    "adapted = adapter.evaluate(held_out)",
+    "new_records = sign_dataset(3, seed=NEW_DATA_SEED)",
+    "descriptor = adapter.save_artifact(artifact_path, notes='RT-DETR R50-VD sign adaptation tutorial artifact')",
+    "reloaded = RTDetrDetectionPipeline.load_artifact(artifact_path, weights_dir=WEIGHTS_DIR)",
+    "assert len(det_orig) == len(det_reloaded)",
     "'model_revision': MODEL_REVISION",
     "'model_license': MODEL_LICENSE",
     "transformers.__version__",
@@ -62,16 +66,14 @@ CODE_MARKERS = (
 )
 
 MARKDOWN_MARKERS = (
-    "**Capability:** object detection over the 80 COCO classes",
-    "**No adaptation occurs:**",
+    "**Capability:** real-time object detection over the 80 COCO classes",
+    "**The default path really adapts the model:**",
     "The detection threshold is a **caller-owned request parameter**",
-    "**per-class sigmoid under the model's own focal-loss head, not a calibrated",
-    "**ordered by descending score**",
+    "**Keep the two vocabularies apart.**",
+    "**The baseline is zero (or near-zero), and that is the expected starting point.**",
+    "**The backbone is frozen.**",
     "COCO mean average precision needs a labelled image set",
-    "the verdict is `not-measurable`",
-    "`sample-sanity`",
-    "**The model emits boxes for any image**",
-    "classes outside the 80 COCO categories (a closed vocabulary",
+    "AP@[.50:.95]",
 )
 
 # Runtime/model-library access must stay inside the carried module (ST1/ST2).
@@ -179,7 +181,12 @@ FORBIDDEN_PATTERNS = (
     ("trust_remote_code enabled", re.compile(r"trust_remote_code\s*[=:]\s*True")),
     (
         "unsafe deserialization",
-        re.compile(r"\bpickle\.load|\btorch\.load\s*\(|getattr\(\s*torch\s*,\s*['\"]load['\"]"),
+        re.compile(
+            r"\bpickle\.load"
+            r"|\btorch\.load\s*\((?![^)]*weights_only\s*=\s*True)"
+            r"|weights_only\s*=\s*False"
+            r"|getattr\(\s*torch\s*,\s*['\"]load['\"]"
+        ),
     ),
     ("archive extractall", re.compile(r"\.extractall\s*\(")),
     ("notebook magic or shell escape", re.compile(r"(?m)^\s*[%!]|get_ipython\(\)")),
@@ -360,10 +367,17 @@ def _validate_notebook_structure(path: Path, notebook: dict) -> tuple[list[tuple
         generated.get("module") == f"src/{PACKAGE}/pipeline.py",
         f"{path.name}: generated_from.module must be src/{PACKAGE}/pipeline.py",
     )
-    module_sha = hashlib.sha256(_read(ROOT / "src" / PACKAGE / "pipeline.py").encode("utf-8")).hexdigest()
+    template = _load_tool("notebook_template").TEMPLATE
+    build_tool = _load_tool("build_notebook")
+    module_sha = build_tool.load_context(ROOT, template)["module_sha256"]
     _check(
         generated.get("module_sha256") == module_sha,
         f"{path.name}: generated_from.module_sha256 does not match src/ (PAR4: regenerate the notebook)",
+    )
+    _check(
+        generated.get("modules")
+        == [f"src/{PACKAGE}/{m}" for m in build_tool.load_context(ROOT, template)["modules"]],
+        f"{path.name}: generated_from.modules must list every carried module in dependency order",
     )
     _check(bool(generated.get("generator")), f"{path.name}: generated_from.generator is required")
     cells = notebook.get("cells", [])
@@ -431,38 +445,51 @@ def _validate_gates(path: Path, code_cells: list[tuple[int, str, ast.Module]]) -
                 )
 
 
-def _validate_embedded_module(path: Path, notebook: dict, build) -> int:
-    """PAR1: exactly one tagged cell, equal to the module after the documented rewrites."""
+def _validate_embedded_module(path: Path, notebook: dict, build) -> set[int]:
+    """PAR1: one tagged cell per carried module, each equal to its module after the rewrites."""
+    template = _load_tool("notebook_template").TEMPLATE
+    modules = build.load_context(ROOT, template)["modules"]
+    rewrites = template.get("rewrites", build.DEFAULT_REWRITES)
     tagged = [
         (index, cell)
         for index, cell in enumerate(notebook.get("cells", []))
-        if cell.get("cell_type") == "code" and cell.get("metadata", {}).get("dimer", {}).get("embedded_module")
+        if cell.get("cell_type") == "code"
+        and cell.get("metadata", {}).get("dimer", {}).get("embedded_module")
     ]
-    _check(len(tagged) == 1, f"{path.name}: exactly one cell must be tagged metadata.dimer.embedded_module (ST2)")
-    index, cell = tagged[0]
     _check(
-        cell["metadata"]["dimer"]["embedded_module"] == f"src/{PACKAGE}/pipeline.py",
-        f"{path.name}: embedded_module tag must name src/{PACKAGE}/pipeline.py",
+        len(tagged) == len(modules),
+        f"{path.name}: expected {len(modules)} cells tagged metadata.dimer.embedded_module, found {len(tagged)} (ST2)",
     )
-    expected = build.apply_rewrites(_read(ROOT / "src" / PACKAGE / "pipeline.py"))
+    names = [cell["metadata"]["dimer"]["embedded_module"] for _index, cell in tagged]
     _check(
-        _cell_source(cell).rstrip("\n") + "\n" == expected,
-        f"{path.name}: embedded module differs from src/{PACKAGE}/pipeline.py (PAR1); regenerate the notebook",
+        names == [f"src/{PACKAGE}/{m}" for m in modules],
+        f"{path.name}: embedded_module tags {names} do not match the carried modules in dependency order",
     )
-    return index
+    _check(
+        f"src/{PACKAGE}/pipeline.py" in names,
+        f"{path.name}: the entry module src/{PACKAGE}/pipeline.py must be carried",
+    )
+    texts = {m: _read(ROOT / "src" / PACKAGE / m) for m in modules}
+    expected = build.apply_rewrites(texts, rewrites)
+    for (index, cell), module in zip(tagged, modules, strict=True):
+        _check(
+            _cell_source(cell).rstrip("\n") + "\n" == expected[module],
+            f"{path.name}: embedded module differs from src/{PACKAGE}/{module} (PAR1); regenerate the notebook (cell {index})",
+        )
+    return {index for index, _cell in tagged}
 
 
 def _validate_identity(
-    path: Path, code_cells: list[tuple[int, str, ast.Module]], embedded_index: int, revision: str
+    path: Path, code_cells: list[tuple[int, str, ast.Module]], embedded_indices: set[int], revision: str
 ) -> None:
-    """Identity constants are bound in the carried module only; nothing outside rebinds them."""
+    """Identity constants are bound in the carried modules only; nothing outside rebinds them."""
     for index, _source, tree in code_cells:
-        if index == embedded_index:
+        if index in embedded_indices:
             continue
         for node in ast.walk(tree):
             rebound = [name for name in _assignment_targets(node) if name in IDENTITY_NAMES]
             _check(not rebound, f"{path.name}: {rebound} must not be rebound outside the module cell (cell {index})")
-    outside = "\n".join(source for index, source, _ in code_cells if index != embedded_index)
+    outside = "\n".join(source for index, source, _ in code_cells if index not in embedded_indices)
     manifest_block = re.search(r"^MANIFEST = (\{.*?^\})$", outside, re.M | re.S)
     _check(manifest_block is not None, f"{path.name}: model cell must carry an inline MANIFEST literal (ST3)")
     outside_without_manifest = outside.replace(manifest_block.group(0), "")
@@ -503,12 +530,12 @@ def _validate_bootstrap_guard(path: Path, code_cells: list[tuple[int, str, ast.M
 
 
 def _validate_notebook_content(
-    path: Path, code_cells: list[tuple[int, str, ast.Module]], markdown: str, embedded_index: int
+    path: Path, code_cells: list[tuple[int, str, ast.Module]], markdown: str, embedded_indices: set[int]
 ) -> None:
     model_id, _revision = _package_identity()
     stripped = {index: _strip_comments(source) for index, source, _ in code_cells}
     code = "\n".join(stripped.values())
-    outside = "\n".join(text for index, text in stripped.items() if index != embedded_index)
+    outside = "\n".join(text for index, text in stripped.items() if index not in embedded_indices)
     missing = [marker for marker in COMMON_CODE_MARKERS + CODE_MARKERS if marker not in code]
     _check(not missing, f"{path.name}: missing required source markers: {missing}")
     present = [label for label, pattern in FORBIDDEN_PATTERNS if pattern.search(code)]
@@ -538,11 +565,11 @@ def validate_notebooks() -> None:
     build = _load_tool("build_notebook")
     notebook = json.loads(_read(path))
     code_cells, markdown = _validate_notebook_structure(path, notebook)
-    embedded_index = _validate_embedded_module(path, notebook, build)
+    embedded_indices = _validate_embedded_module(path, notebook, build)
     _model_id, revision = _package_identity()
-    _validate_identity(path, code_cells, embedded_index, revision)
+    _validate_identity(path, code_cells, embedded_indices, revision)
     _validate_parity(path, notebook, code_cells, build)
-    _validate_notebook_content(path, code_cells, markdown, embedded_index)
+    _validate_notebook_content(path, code_cells, markdown, embedded_indices)
     registry = _read(tutorials / "README.md")
     _check(f"`{path.name}`" in registry, f"{path.name} missing from tutorials/README.md")
     _check(f"`{EXPECTED_PROFILE}`" in registry, f"tutorials/README.md must record `{EXPECTED_PROFILE}`")
