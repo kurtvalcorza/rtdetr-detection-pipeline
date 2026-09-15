@@ -1,6 +1,6 @@
 # Release verification
 
-`tutorials/rtdetr_detection_colab.ipynb` (`TASK-INFERENCE`, **standalone** carrier) is a
+`tutorials/rtdetr_detection_colab.ipynb` (`E2E`, **standalone** carrier) is a
 **release candidate** until the exact notebook revision has executed top-to-bottom in a clean
 supported runtime. Unit tests, JSON validation, code-cell compilation, the generator parity checks
 and `tools/validate_release_assets.py` are necessary checks but are **not** runtime evidence under
@@ -116,6 +116,7 @@ they are measurements for the stated runtime, not general estimates.
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
 | 2026-09-14 | notebook blob `901896a1d0e5` (commit `caba03e`, generated at `c15c834`; `NOTEBOOK_SOURCE.repository_revision` = `c15c834…`) | Local Windows-venv harness (`run_nb_local.py`: nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default synthetic path, all 8 code cells: pinned install skipped (pre-installed), `stage_missing_files` fetched all 4 manifest entries (172 MB) from the Hub cache at the pinned revision into the scratch `weights/`, `verify_snapshot` PASS (4 files), `detect` → 3 boxes (`stop sign` 0.977, `clock` 0.965, `traffic light` 0.931), `evaluation_report` `sample-sanity` (IoU stop sign 0.877, traffic light 0.965, clock 0.983, sports ball 0.000 — no same-label detection), 5 outputs written | 25.5 s | PASS — pre-flight only; not promotion evidence |
+| 2026-09-15 | `feat/rtdetr-e2e-finetuning` | Local Windows-venv harness (nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default E2E path, all 13 sections: COCO demonstration (3 boxes matched), degenerate input probes, 40-image sign dataset generation & validation, baseline evaluation (AP 0.000, AP50 0.000), 3-epoch bounded fine-tuning (backbone frozen, 19.3M trainable parameters), post-adaptation evaluation (AP 0.849, AP50 0.854; stop-sign 1.000, yield-sign 0.914, speed-limit-sign 0.646), unseen image inference, artifact export to `rtdetr_adapter.pt` (171.7 MB) and fresh reload identity assertion, 6 outputs written | 142.2 s | PASS — pre-flight only; ready for hosted clean-room GPU verification |
 
 ### Manual clean-runtime evidence
 
