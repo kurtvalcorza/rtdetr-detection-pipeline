@@ -44,7 +44,7 @@ The uses below are the ones the package was built to support; everything else is
 
 ###### Primary Intended Uses
 
-The task is closed-vocabulary object detection: input one image (`PIL.Image.Image`, any mode, converted to RGB) and a threshold; output a list of at most 300 detections, each an xyxy pixel box, a `label` among the 80 COCO classes, and the model's sigmoid `score`, sorted by score. Envisioned applications are everyday-scene detection where the COCO vocabulary fits — people and vehicles in street or traffic imagery, animals, furniture and household objects in indoor imagery, sports and food scenes — as the first stage of counting, cropping, tracking-by-detection or downstream classification, and as the person detector feeding a pose estimator (the sibling ViTPose pipeline). Within DIMER the pipeline is an inference component and a zero-configuration baseline for general object detection, not a certified detector for any specific camera, scene or class.
+The task is closed-vocabulary object detection: input one image (`PIL.Image.Image`, any mode, converted to RGB) and a threshold; output a list of at most 300 detections, each an xyxy pixel box, a `label` among the 80 COCO classes, and the model's sigmoid `score`, sorted by score. Envisioned applications are everyday-scene detection where the COCO vocabulary fits — people and vehicles in street or traffic imagery, animals, furniture and household objects in indoor imagery, sports and food scenes — as the first stage of counting, cropping, tracking-by-detection or downstream classification, and as the person detector feeding a pose estimator (the sibling ViTPose pipeline). The pipeline is an inference component and a zero-configuration baseline for general object detection, not a certified detector for any specific camera, scene or class.
 
 ###### Primary Intended Users
 
@@ -118,7 +118,7 @@ This pipeline is not intended for decisions in health, safety, criminal justice,
 
 ###### Use cases
 
-Prohibited even where the model would work: detecting people in order to surveil, track, profile, or score them, or to enable unlawful discrimination in employment, housing, credit, insurance, education, healthcare access or law enforcement; processing imagery the operator has no right to process, or in breach of consent, privacy or data-protection obligations; deceptive uses that present detections as verified facts or as evidence; autonomous physical control or safety interlocks based on unreviewed detections; and any use that violates the upstream Apache-2.0 licence terms or the DIMER deployment terms. Autonomous high-consequence actions triggered by unreviewed detections are prohibited by the intended-use contract above.
+Prohibited even where the model would work: detecting people in order to surveil, track, profile, or score them, or to enable unlawful discrimination in employment, housing, credit, insurance, education, healthcare access or law enforcement; processing imagery the operator has no right to process, or in breach of consent, privacy or data-protection obligations; deceptive uses that present detections as verified facts or as evidence; autonomous physical control or safety interlocks based on unreviewed detections; and any use that violates the upstream Apache-2.0 licence terms or the terms of the deployment that runs the pipeline. Autonomous high-consequence actions triggered by unreviewed detections are prohibited by the intended-use contract above.
 
 ## Immutable provenance
 
