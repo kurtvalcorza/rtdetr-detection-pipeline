@@ -124,3 +124,23 @@ def test_install_keeps_a_numpy_the_kernel_already_loaded():
     install = next(cell for cell in cells if "pip" in cell and "install" in cell)
     assert 'NUMPY_PRELOADED' in install and '"numpy" in sys.modules' in install
     assert "if stale:" in install and "Restart session" in install
+
+
+def test_no_undefined_names_across_code_cells():
+    # `urllib` was used by the YOLOX checkpoint download but never imported; runs with a cached checkpoint hid it.
+    import builtins
+    tree = ast.parse("\n\n".join(code_cells()))
+    bound = set(dir(builtins)) | {"display", "get_ipython"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            bound.add(node.id)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(node.name)
+        elif isinstance(node, ast.arg):
+            bound.add(node.arg)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            bound.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            bound.add(node.name)
+    used = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+    assert not used - bound, f"names used but never defined: {sorted(used - bound)}"
