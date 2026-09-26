@@ -114,3 +114,13 @@ def test_json_is_imported_before_first_use():
 def test_scipy_is_pinned_for_rtdetr_training():
     # transformers' RTDetrHungarianMatcher (the RT-DETR training loss) requires SciPy.
     assert any(pin.startswith("scipy==") for pin in notebook_constants()["PINS"])
+
+
+def test_install_keeps_a_numpy_the_kernel_already_loaded():
+    # Colab imports NumPy at startup; reinstalling it left 2.1.3 in memory over 2.5.3 on disk, which broke later
+    # imports (Notebook Spec RUN10 forbids a manual restart). The cell keeps a loaded NumPy 2.x and fails closed
+    # if any module it depends on was replaced underneath the kernel.
+    cells = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text(encoding="utf-8"))["cells"] if c["cell_type"] == "code"]
+    install = next(cell for cell in cells if "pip" in cell and "install" in cell)
+    assert 'NUMPY_PRELOADED' in install and '"numpy" in sys.modules' in install
+    assert "if stale:" in install and "Restart session" in install
