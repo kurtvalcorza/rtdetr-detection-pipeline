@@ -109,3 +109,8 @@ def test_json_is_imported_before_first_use():
     cells = code_cells()
     first_use = next(i for i, cell in enumerate(cells) if "json." in cell)
     assert any("import json" in cell for cell in cells[: first_use + 1])
+
+
+def test_scipy_is_pinned_for_rtdetr_training():
+    # transformers' RTDetrHungarianMatcher (the RT-DETR training loss) requires SciPy.
+    assert any(pin.startswith("scipy==") for pin in notebook_constants()["PINS"])
