@@ -128,3 +128,39 @@ they are measurements for the stated runtime, not general estimates.
 ## Current status
 
 Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly (1 automatic restart after the pinned install cell), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.
+
+## Supplemental closed-set guided notebook — 2026-09-26 remediation
+
+This entry applies only to `DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, not the earlier primary-notebook executions above. Status remains **Candidate**. No new hosted runtime execution was performed or inferred from the primary notebook's evidence.
+
+Baseline: 10 workshop contract tests and 7 primary parity tests passed (independently recorded by the integrator). Confirmed gaps were a BYOD loader without downstream adaptation, destructive reuse of extraction destination, ambiguous image identities/splits, evaluator sequence truncation, reload-to-reload rather than live-to-reload parity, and runtime source fetching. The fixes carry nine upstream files with original SHA-256 checks and the Apache license, enforce bounded BYOD validation, run sequential model adaptation/reconstruction/evaluation with isolated exports, and compare live adapted validation predictions to a fresh artifact. Guided prompts, a validation-only threshold activity, infrastructure collapse and a stale imported-package guard were added. Public versions accept local build suffixes. A required session restart is explicitly reported and does not satisfy an uninterrupted Run all gate.
+
+Local lightweight checks execute the actual notebook validation, evaluation and orchestration functions with small ZIP fixtures and model doubles. These verify control/data flow, not real model quality, GPU memory or hosted package compatibility. Measured counts and exits are finalized below.
+
+Pending qualification recipe:
+
+1. Start a fresh T4 Colab runtime; use default STANDARD and Run all. Preserve commit/blob, outputs, versions, wall time, peak VRAM, any restart and the final summary. Repeat FULL in a separate fresh runtime. Do not claim uninterrupted execution if the package guard requests a restart.
+2. Build a valid ZIP with 5–60 distinct images of the declared three classes and explicit train/validation/test assignments, every split covering all classes, at most six boxes per image. Set `USE_BYOD=True` and `BYOD_ZIP_PATH`. Run through model adaptation, frozen validation, baseline reconstruction, fresh adapter reconstruction, held-out inference and per-model exports under `outputs/byod/run-*`. Check `input_manifest.json` hashes/model identities, frozen artifact digest, `results.json`, `metrics.csv`, and live-to-fresh parity. Keep these results separate from canonical synthetic results.
+3. In a separate run replace a class label with `unknown`, introduce an out-of-bounds/nonfinite box, omit an annotated file, or duplicate pixels across splits. Confirm a clear failure before BYOD model loading and no BYOD result report. Preserve the rejection output.
+
+REL12 real-model valid/invalid BYOD and STANDARD/FULL hosted evidence remain open. Local tests do not promote this notebook.
+
+Measured local checks: workshop contracts **10/10** and BYOD/evaluator/runtime guard checks **22/22** passed (`python -m pytest tests/test_detection_workshop.py tests/test_detection_workshop_byod.py -q --noconftest`, exit 0). Release validator and supplemental generator parity each returned exit 0. No model weights were executed by these tests.
+
+
+### Colab NumPy setup failure — 2026-09-26
+
+The maintainer-supplied run stopped in setup before model execution: NumPy 2.1.3 was already loaded, while the notebook installed 2.5.3. The [failure record](execution-evidence/2026-09-26/colab-setup-failure.json) records the independently inspected error. The supplemental notebook retains an already loaded NumPy 2.x, integrating the concurrent host-preservation fix, and uses 2.1.3 as the fallback pin when NumPy is not yet loaded. The observed Colab 2.1.3 is preserved instead of replaced. Other model/runtime pins are unchanged; stale-module detection remains enabled. Declared upstream requirements permit 2.1.3 (Transformers and datasets require >=1.17; the closed-set SciPy pin requires >=2.0,<2.8).
+
+A regression executes the real setup prefix against a simulated Colab preloaded NumPy and package installer: it reproduces the original restart error before the fix and completes without a restart after it. This is setup regression evidence, not a full model/Colab rerun. A new hosted Run all is still required to discover any downstream issues. Use a fresh runtime for that rerun; the prior failed session already replaced installed packages.
+
+
+### Maintainer-supplied successful Colab run — 2026-09-26
+
+The maintainer supplied the [executed notebook](execution-evidence/2026-09-26/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb) and explicitly authorized merging PR #8. This later record supersedes the earlier default-path setup failure. The file is archived byte-for-byte, SHA-256 `19301d8b57626b07f681233e0fa4492c4141983ec49dd367b3dd7cd21974b519`. All 27 code cells have execution counts, 38 saved outputs and zero saved errors. Executable Python ASTs match commit `047f416ef663f922f5a73ce47887af39171b1ec0`, tutorial blob `f696be062bad0c0faaef31786d1f3152c4f1d621`. This evidence commit does not change tutorial code.
+
+Scope: STANDARD: RT-DETR and YOLOX-S; 60 synthetic images split 36 train / 12 validation / 12 test. FULL and BYOD were not exercised.
+
+Saved runtime: Python 3.13.15, torch 2.14.0+cu130, Transformers 4.57.6, NumPy 2.1.3, CUDA Tesla T4. Execution reaches the final summary/export checks. The separate exported files were not supplied, so their bytes/digests were not independently inspected. Saved counts run sequentially from 1 to 27; runtime freshness and absence of manual restarts/reruns are not independently established by the artifact.
+
+Merge approval and this successful canonical run do not close the remaining optional-path/REL12 qualification gates or imply a blanket gold-standard promotion. Retain the earlier limitations except where this default-path execution directly supersedes them.
