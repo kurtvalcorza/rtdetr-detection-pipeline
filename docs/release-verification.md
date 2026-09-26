@@ -153,3 +153,14 @@ Measured local checks: workshop contracts **10/10** and BYOD/evaluator/runtime g
 The maintainer-supplied run stopped in setup before model execution: NumPy 2.1.3 was already loaded, while the notebook installed 2.5.3. The [failure record](execution-evidence/2026-09-26/colab-setup-failure.json) records the independently inspected error. The supplemental notebook retains an already loaded NumPy 2.x, integrating the concurrent host-preservation fix, and uses 2.1.3 as the fallback pin when NumPy is not yet loaded. The observed Colab 2.1.3 is preserved instead of replaced. Other model/runtime pins are unchanged; stale-module detection remains enabled. Declared upstream requirements permit 2.1.3 (Transformers and datasets require >=1.17; the closed-set SciPy pin requires >=2.0,<2.8).
 
 A regression executes the real setup prefix against a simulated Colab preloaded NumPy and package installer: it reproduces the original restart error before the fix and completes without a restart after it. This is setup regression evidence, not a full model/Colab rerun. A new hosted Run all is still required to discover any downstream issues. Use a fresh runtime for that rerun; the prior failed session already replaced installed packages.
+
+
+### Maintainer-supplied successful Colab run — 2026-09-26
+
+The maintainer supplied the [executed notebook](execution-evidence/2026-09-26/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb) and explicitly authorized merging PR #8. This later record supersedes the earlier default-path setup failure. The file is archived byte-for-byte, SHA-256 `19301d8b57626b07f681233e0fa4492c4141983ec49dd367b3dd7cd21974b519`. All 27 code cells have execution counts, 38 saved outputs and zero saved errors. Executable Python ASTs match commit `047f416ef663f922f5a73ce47887af39171b1ec0`, tutorial blob `f696be062bad0c0faaef31786d1f3152c4f1d621`. This evidence commit does not change tutorial code.
+
+Scope: STANDARD: RT-DETR and YOLOX-S; 60 synthetic images split 36 train / 12 validation / 12 test. FULL and BYOD were not exercised.
+
+Saved runtime: Python 3.13.15, torch 2.14.0+cu130, Transformers 4.57.6, NumPy 2.1.3, CUDA Tesla T4. Execution reaches the final summary/export checks. The separate exported files were not supplied, so their bytes/digests were not independently inspected. Saved counts run sequentially from 1 to 27; runtime freshness and absence of manual restarts/reruns are not independently established by the artifact.
+
+Merge approval and this successful canonical run do not close the remaining optional-path/REL12 qualification gates or imply a blanket gold-standard promotion. Retain the earlier limitations except where this default-path execution directly supersedes them.
