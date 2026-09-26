@@ -15,7 +15,7 @@ def build_notebook():
     for index, cell in enumerate(CELLS):
         base = {
             "id": f"dimer-detection-workshop-{index:02d}",
-            "metadata": {},
+            "metadata": cell.get("metadata", {}),
             "source": cell["source"].splitlines(keepends=True),
         }
         if cell["kind"] == "markdown":
@@ -28,7 +28,7 @@ def build_notebook():
             "accelerator": "GPU",
             "colab": {"gpuType": "T4", "provenance": []},
             "dimer": {
-                "candidate_gate": "carry pinned YOLOX upstream source inline before promotion",
+                "candidate_gate": "fresh STANDARD/FULL T4 and real-model BYOD qualification",
                 "canonical_runtime": "NVIDIA Tesla T4",
                 "capability": "multi-model-closed-set-object-detection",
                 "carrier": "comparative bounded-adaptation object-detection workshop",

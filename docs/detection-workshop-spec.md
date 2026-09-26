@@ -1836,3 +1836,9 @@ That makes the comparison scientifically more defensible than forcing RT-DETR an
 The core workshop question becomes:
 
 > **How do set-prediction and dense anchor-free detectors transfer differently to the same small closed-vocabulary detection problem, and what accuracy/compute tradeoffs emerge once the data and evaluation are controlled?**
+
+## 2026-09-26 implementation clarification
+
+The supplemental guided notebook carries the pinned YOLOX source and Apache-2.0 license inline (nine upstream files, eight runtime modules). It no longer fetches upstream Python at runtime. Model pins and the canonical 60-image recipe remain unchanged.
+
+BYOD is bounded adaptation for the same three declared sign labels, not arbitrary-vocabulary detection. Supply 5–60 images, at most six boxes each, side lengths 16–4096 and at most 16 megapixels. `annotations.csv` must annotate every image, use consistent ID/file/split mappings, and supply all explicit train/validation/test splits or none. Each split must cover every class; duplicate pixels across splits are rejected. Validation completes before model acquisition. Artifacts, frozen validation settings, live-to-fresh parity, baseline/adapted held-out metrics and prediction JSON are separate from canonical output. No real-model hosted BYOD result is claimed.

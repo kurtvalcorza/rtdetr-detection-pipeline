@@ -128,3 +128,21 @@ they are measurements for the stated runtime, not general estimates.
 ## Current status
 
 Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly (1 automatic restart after the pinned install cell), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.
+
+## Supplemental closed-set guided notebook — 2026-09-26 remediation
+
+This entry applies only to `DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, not the earlier primary-notebook executions above. Status remains **Candidate**. No new hosted runtime execution was performed or inferred from the primary notebook's evidence.
+
+Baseline: 10 workshop contract tests and 7 primary parity tests passed (independently recorded by the integrator). Confirmed gaps were a BYOD loader without downstream adaptation, destructive reuse of extraction destination, ambiguous image identities/splits, evaluator sequence truncation, reload-to-reload rather than live-to-reload parity, and runtime source fetching. The fixes carry nine upstream files with original SHA-256 checks and the Apache license, enforce bounded BYOD validation, run sequential model adaptation/reconstruction/evaluation with isolated exports, and compare live adapted validation predictions to a fresh artifact. Guided prompts, a validation-only threshold activity, infrastructure collapse and a stale imported-package guard were added. Public versions accept local build suffixes. A required session restart is explicitly reported and does not satisfy an uninterrupted Run all gate.
+
+Local lightweight checks execute the actual notebook validation, evaluation and orchestration functions with small ZIP fixtures and model doubles. These verify control/data flow, not real model quality, GPU memory or hosted package compatibility. Measured counts and exits are finalized below.
+
+Pending qualification recipe:
+
+1. Start a fresh T4 Colab runtime; use default STANDARD and Run all. Preserve commit/blob, outputs, versions, wall time, peak VRAM, any restart and the final summary. Repeat FULL in a separate fresh runtime. Do not claim uninterrupted execution if the package guard requests a restart.
+2. Build a valid ZIP with 5–60 distinct images of the declared three classes and explicit train/validation/test assignments, every split covering all classes, at most six boxes per image. Set `USE_BYOD=True` and `BYOD_ZIP_PATH`. Run through model adaptation, frozen validation, baseline reconstruction, fresh adapter reconstruction, held-out inference and per-model exports under `outputs/byod/run-*`. Check `input_manifest.json` hashes/model identities, frozen artifact digest, `results.json`, `metrics.csv`, and live-to-fresh parity. Keep these results separate from canonical synthetic results.
+3. In a separate run replace a class label with `unknown`, introduce an out-of-bounds/nonfinite box, omit an annotated file, or duplicate pixels across splits. Confirm a clear failure before BYOD model loading and no BYOD result report. Preserve the rejection output.
+
+REL12 real-model valid/invalid BYOD and STANDARD/FULL hosted evidence remain open. Local tests do not promote this notebook.
+
+Measured local checks: workshop contracts **10/10** and BYOD/evaluator/runtime guard checks **22/22** passed (`python -m pytest tests/test_detection_workshop.py tests/test_detection_workshop_byod.py -q --noconftest`, exit 0). Release validator and supplemental generator parity each returned exit 0. No model weights were executed by these tests.
