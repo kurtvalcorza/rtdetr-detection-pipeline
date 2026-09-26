@@ -103,3 +103,9 @@ def test_clean_notebook():
         if cell["cell_type"] == "code":
             assert cell["execution_count"] is None
             assert cell["outputs"] == []
+
+
+def test_json_is_imported_before_first_use():
+    cells = code_cells()
+    first_use = next(i for i, cell in enumerate(cells) if "json." in cell)
+    assert any("import json" in cell for cell in cells[: first_use + 1])
