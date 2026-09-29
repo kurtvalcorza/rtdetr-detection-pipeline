@@ -200,3 +200,40 @@ The earlier hand edit that added the AI Use Disclosure (`16115d3`) is now carrie
 - **Scope:** no RT-DETR model execution, no gradient training, and no GPU.
 
 Still required before promotion: a fresh T4 STANDARD Run all of this revision; FULL in a separate fresh runtime; real-model valid and invalid BYOD (REL12); and the learner observation named in the review. Model scores after the BatchNorm correction are new measurements and are not expected to match the earlier run.
+
+
+### Maintainer-supplied Colab execution of revision `ade681b` — 2026-09-30
+
+- **File:** [executed notebook](execution-evidence/2026-09-30/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop_ade681b.ipynb), archived byte-for-byte, SHA-256 `7fbfd0b07fbf36438d8eb0a0afc0d00a3d08158f1757da2d419733051319f31e`.
+- **Source match:** the source of all 56 cells matches the PR head `ade681b` (notebook blob `395cb935`) with no diffs at all, not even `# @param` lines. Cell ids and order are unchanged.
+- **Runtime:** Colab Tesla T4. Python 3.13.15, torch 2.14.0+cu130, torchvision 0.29.0+cu130, Transformers 4.57.6, NumPy 2.1.3 (preloaded by the host kernel).
+- **Execution:** 27/27 code cells, counts 1..27 in order, no saved errors. Tier STANDARD (RT-DETR, YOLOX-S); `USE_BYOD=False`. `run_id` `20260929T215642Z-cad619`, `experiment_id` `7999e116…6ba3a`.
+- **Dataset:** `dataset_sha256` `823df4cf…302169`, split 36/12/12, identical to the 2026-09-26 run.
+- **Training-stage peak VRAM:** RT-DETR 2553 MiB; YOLOX-S 621 MiB. Both are stage peaks with both detectors resident.
+
+| Model | State | Test AP | AP50 | AP75 | Recall@0.30 | 2026-09-26 AP (`047f416`) |
+|---|---|---:|---:|---:|---:|---:|
+| RT-DETR | pre | 0.0495 | 0.0495 | 0.0495 | 0.000 | 0.0495 |
+| RT-DETR | adapted | 0.9704 | 0.9883 | 0.9883 | 0.682 | 0.9737 |
+| YOLOX-S | pre | 0.0344 | 0.0376 | 0.0376 | 0.000 | 0.1163 |
+| YOLOX-S | adapted | 0.8273 | 1.0000 | 1.0000 | 1.000 | 0.8520 |
+
+RT-DETR's code path is unchanged: its pre-adaptation row is identical, and the adapted AP differs by 0.003, which is consistent with GPU training nondeterminism. The YOLOX-S rows are new measurements after the DET-01 BatchNorm correction. Neither set of scores is an acceptance gate.
+
+| Journey / check | Verdict |
+|---|---|
+| STANDARD Run all (default) | **PASS**: the final summary was reached. |
+| DET-01 BatchNorm | **PASS**: YOLOX-S built, loaded and adapted without the BatchNorm check refusing it; the adapter uses format `/2`. |
+| DET-02 numerical gates | **PASS** on valid outputs: no refusals. Reload parity: RT-DETR and YOLOX-S each 1 detection, differences 0.0. |
+| DET-03 freeze binding | **PASS**: the test used the verified frozen settings (cutoff 0.01, display 0.30, NMS 0.65). |
+| DET-04 gallery | **PASS**: every test image tied on per-image AP50, so both "no advantage" lines were printed and only the three-object scene was drawn, titled with the 0.00 difference. |
+| DET-06 export | **PASS**: 27 files in the run directory, bundle SHA-256 `5ea11ea3…d185be1`, metric replay from `test/predictions.json` PASS 4/4. |
+| DET-07 label | **PASS**: `stage_peak_vram_MiB` and the note are shown. |
+| Export re-run | not assessed in this run (export cell executed once) |
+| FULL tier | not assessed in this run |
+| BYOD (valid and invalid, real models) | not assessed in this run |
+
+**Evidence boundary:** saved outputs were inspected; execution was not independently repeated. The exported bundle's bytes were not supplied. Saved execution counts do not establish runtime freshness or the absence of restarts.
+
+**Still open:** FULL in a fresh runtime, real-model valid and invalid BYOD (REL12), and the learner observation. Status remains **Candidate**.
+
