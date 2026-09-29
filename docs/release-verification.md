@@ -140,7 +140,7 @@ Local lightweight checks execute the actual notebook validation, evaluation and 
 Pending qualification recipe:
 
 1. Start a fresh T4 Colab runtime; use default STANDARD and Run all. Preserve commit/blob, outputs, versions, wall time, peak VRAM, any restart and the final summary. Repeat FULL in a separate fresh runtime. Do not claim uninterrupted execution if the package guard requests a restart.
-2. Build a valid ZIP with 5–60 distinct images of the declared three classes and explicit train/validation/test assignments, every split covering all classes, at most six boxes per image. Set `USE_BYOD=True` and `BYOD_ZIP_PATH`. Run through model adaptation, frozen validation, baseline reconstruction, fresh adapter reconstruction, held-out inference and per-model exports under `outputs/byod/run-*`. Check `input_manifest.json` hashes/model identities, frozen artifact digest, `results.json`, `metrics.csv`, and live-to-fresh parity. Keep these results separate from canonical synthetic results.
+2. Build a valid ZIP with 5–60 distinct images of the declared three classes and explicit train/validation/test assignments, every split covering all classes, at most six boxes per image. Set `USE_BYOD=True` and `BYOD_ZIP_PATH`. Run through model adaptation, frozen validation, baseline reconstruction, fresh adapter reconstruction, held-out inference and per-model exports under `outputs/runs/<RUN_ID>/byod/run-*` (before the 2026-09-30 revision: `outputs/byod/run-*`). Check `input_manifest.json` hashes/model identities, frozen artifact digest, `results.json`, `metrics.csv`, and live-to-fresh parity. Keep these results separate from canonical synthetic results.
 3. In a separate run replace a class label with `unknown`, introduce an out-of-bounds/nonfinite box, omit an annotated file, or duplicate pixels across splits. Confirm a clear failure before BYOD model loading and no BYOD result report. Preserve the rejection output.
 
 REL12 real-model valid/invalid BYOD and STANDARD/FULL hosted evidence remain open. Local tests do not promote this notebook.
@@ -164,3 +164,39 @@ Scope: STANDARD: RT-DETR and YOLOX-S; 60 synthetic images split 36 train / 12 va
 Saved runtime: Python 3.13.15, torch 2.14.0+cu130, Transformers 4.57.6, NumPy 2.1.3, CUDA Tesla T4. Execution reaches the final summary/export checks. The separate exported files were not supplied, so their bytes/digests were not independently inspected. Saved counts run sequentially from 1 to 27; runtime freshness and absence of manual restarts/reruns are not independently established by the artifact.
 
 Merge approval and this successful canonical run do not close the remaining optional-path/REL12 qualification gates or imply a blanket gold-standard promotion. Retain the earlier limitations except where this default-path execution directly supersedes them.
+
+
+### Notebook review remediation (DET-01 to DET-07) — 2026-09-30
+
+This entry applies only to the supplemental closed-set notebook and responds to the review of commit `16115d3` (notebook blob `b1a8b9ef2d41`). Status remains **Candidate**, and readiness is **Verification pending** until a hosted run of this revision exists. The successful 2026-09-26 Colab record above remains attached to its original revision (`047f416`). It is not evidence for this revision: the YOLOX construction changed.
+
+| Finding | Correction |
+|---|---|
+| DET-01 (major) | `build_yolox` applies the pinned upstream `Exp.get_model` BatchNorm settings (`eps=1e-3`, `momentum=0.03`) before weights load, in both the fresh and reload paths, and checks every layer. Artifacts record the setting (`dimer-yolox-detection-adapter/2`). `/1` adapters are refused because they were trained with PyTorch-default BatchNorm. |
+| DET-02 (major) | Raw-output contracts in both wrappers (shape and finiteness, checked before thresholding or NMS). A shared detection-validity gate (four finite, ordered coordinates; a declared label; a finite score in [0, 1]) is applied in both evaluators and in both reload-parity paths. A valid empty list stays valid. The parity prose now says it compares thresholded, postprocessed detections. |
+| DET-03 (major) | The freeze gets an `experiment_id` digest and refuses settings that changed after validation. The test cell re-reads the freeze from disk, verifies the digest, the evaluation settings (cutoff, display threshold, NMS, detection cap, IoU thresholds, class order), the dataset and test cohort, the selected models and the artifact digests, and scores with the frozen values. Drift is refused before any test inference. The duplicate `YOLOX_EVAL_NMS=0.65` redefinition in the wrapper cell was removed, so the section-1 control is the only source. |
+| DET-04 | Gallery "advantage" examples are shown only when that sign exists. Titles carry both per-image AP50 values and their difference. |
+| DET-05 | BYOD refuses duplicate (including case-duplicate) column names and rows whose width differs from the header. |
+| DET-06 | Every Run all writes into `OUTPUT_DIR/runs/<RUN_ID>/`, and the report bundle contains only that run. All normalized test and validation detections are exported (`test/predictions.json`, `validation/predictions.json`) with the effective settings, and the export replays the test metrics from the saved detections. |
+| DET-07 | The training summary column is `stage_peak_vram_MiB`, and the report states that it is a stage peak with every selected detector resident. |
+
+The earlier hand edit that added the AI Use Disclosure (`16115d3`) is now carried by the generator. Before this, `main` failed CI's generator-parity check.
+
+**User-visible changes.** Output paths move under `outputs/runs/<RUN_ID>/`. The bundle is named `outputs/DIMER_Closed_Set_Detection_Workshop_Report_<RUN_ID>.zip`. YOLOX adapter format `/2` is required. BYOD must be enabled in section 1 before Run all. Newly refused inputs: non-finite or malformed model outputs, duplicate annotation headers, ragged annotation rows, and changes made after the freeze.
+
+**Offline verification (not clean-runtime evidence).**
+
+- **pytest:** 130 passed. The baseline at `16115d3` was 70 passed and 1 failed (generator parity). 59 of the 130 are new regression tests that execute the generated cells. The suite also passes without matplotlib or SciPy, as in CI.
+- **Static checks:** ruff, `validate_release_assets.py`, and both generator `--check` runs pass.
+- **Real pinned checkpoint (CPU, no training):**
+  - `yolox_s.pth` was staged through the notebook's own digest check, and the notebook model's raw outputs were **bit-identical** to the pinned upstream constructor on 3/3 generated scenes.
+  - The pre-fix BatchNorm construction changed raw box-regression outputs by up to 380 px and objectness by up to 0.16 on the same weights.
+  - YOLOX-X was built only with random weights; the 793 MB checkpoint was not downloaded.
+- **Journey harness** (every code cell except pip install and the RT-DETR Hub download, with explicit synthetic adapters replacing both detectors):
+  - STANDARD Run all plus an export re-run: same bundle members, metric replay PASS.
+  - FULL Run all into the same `OUTPUT_DIR`: a separate run directory, and no cross-run files in either bundle.
+  - BYOD Run all: the BYOD run sits inside the run directory and bundle.
+  - Refusals: cutoff, NMS and class-order drift are refused with 0 test inference calls; the reviewer's duplicate-header, unsafe-path and missing-image ZIPs are refused before models load.
+- **Scope:** no RT-DETR model execution, no gradient training, and no GPU.
+
+Still required before promotion: a fresh T4 STANDARD Run all of this revision; FULL in a separate fresh runtime; real-model valid and invalid BYOD (REL12); and the learner observation named in the review. Model scores after the BatchNorm correction are new measurements and are not expected to match the earlier run.
