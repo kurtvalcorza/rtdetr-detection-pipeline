@@ -215,7 +215,7 @@ def test_real_orchestrator_with_model_double(tmp_path):
 def test_parity_rejects_export_that_loses_adaptation(tmp_path):
     ns = helpers(tmp_path)
     with pytest.raises(RuntimeError):
-        ns["assert_byod_parity"]([{"label": "a", "box": [0, 0, 1, 1], "score": 0.5}], [])
+        ns["assert_byod_parity"]([{"label": CLASSES[0], "box": [0, 0, 1, 1], "score": 0.5}], [])
 
 
 def test_stale_guard_accepts_local_build_suffix():
