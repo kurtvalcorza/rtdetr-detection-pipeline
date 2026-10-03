@@ -1,47 +1,43 @@
-"""Reproduce Colab's already imported NumPy without model installation."""
+"""Colab's already imported NumPy is left alone: the kernel cells install nothing into the kernel.
+
+Before 2026-10-03 this test executed the in-kernel pip install against a simulated Colab kernel
+with NumPy 2.1.3 loaded. The notebook now builds a uv isolated environment instead, so the regression
+is that the two kernel cells import only the standard library (plus IPython for the router and
+google.colab for the BYOD upload forwarding) and that the locked NumPy is the 2.1.3 the 2026-09-30
+Colab run kept.
+"""
 import ast
-import importlib.metadata
 import json
-import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parents[1]
+NOTEBOOK = ROOT / "tutorials" / "DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb"
 
 
-def test_colab_preloaded_numpy_survives_setup(monkeypatch):
-    root = Path(__file__).resolve().parents[1]
-    path = root / "tutorials" / "DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb"
-    notebook = json.loads(path.read_text(encoding="utf-8"))
-    tree = ast.parse("".join(notebook["cells"][5]["source"]))
-    prefix = []
-    for node in tree.body:
-        if isinstance(node, ast.Import) and any(a.name == "numpy" for a in node.names):
-            break
-        prefix.append(node)
-    pin_node = next(n for n in prefix if isinstance(n, ast.Assign)
-                    and isinstance(n.targets[0], ast.Name) and n.targets[0].id == "PINS")
-    pins = ast.literal_eval(pin_node.value)
-    installed = dict(pins) if isinstance(pins, dict) else dict(
-        p.split("==", 1) for p in pins if "==" in p
-    )
-    installed["numpy"] = "2.1.3"
-    monkeypatch.setattr(importlib.metadata, "version", lambda name: installed[name])
-    for name in ("torch", "torchvision", "torchaudio", "transformers", "PIL", "scipy",
-                 "safetensors", "huggingface_hub", "pyarrow"):
-        monkeypatch.delitem(sys.modules, name, raising=False)
-    loaded_numpy = SimpleNamespace(__version__="2.1.3")
-    monkeypatch.setitem(sys.modules, "numpy", loaded_numpy)
-    monkeypatch.delenv("DIMER_NOTEBOOK_CI_PREINSTALLED", raising=False)
+def kernel_cells():
+    notebook = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
+    return ["".join(c["source"]) for c in notebook["cells"]
+            if c["cell_type"] == "code" and "# dimer: kernel cell" in "".join(c["source"])]
 
-    def install(command, **kwargs):
-        for item in command:
-            if "==" in item:
-                name, version = item.split("==", 1)
-                installed[name] = version
-        return subprocess.CompletedProcess(command, 0, "", "")
 
-    monkeypatch.setattr(subprocess, "run", install)
-    monkeypatch.setattr(subprocess, "check_call", lambda command, **kw: install(command, **kw).returncode)
-    exec(compile(ast.Module(body=prefix, type_ignores=[]), "notebook-setup", "exec"), {})
-    assert installed["numpy"] == loaded_numpy.__version__ == "2.1.3"
-    assert sys.modules["numpy"] is loaded_numpy
+def test_kernel_cells_import_only_the_standard_library():
+    cells = kernel_cells()
+    assert len(cells) == 2
+    allowed = set(sys.stdlib_module_names) | {"IPython", "google"}
+    for cell in cells:
+        for node in ast.walk(ast.parse(cell)):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            for name in names:
+                assert name.split(".")[0] in allowed, name
+            assert not {"numpy", "torch", "pandas"} & {n.split(".")[0] for n in names}
+
+
+def test_lock_keeps_the_numpy_colab_ran_with():
+    lock = (ROOT / "tools" / "detection-workshop-requirements.lock").read_text(encoding="utf-8")
+    assert "\nnumpy==2.1.3 \\\n" in lock
