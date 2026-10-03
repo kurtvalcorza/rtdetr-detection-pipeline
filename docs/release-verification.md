@@ -124,6 +124,7 @@ they are measurements for the stated runtime, not general estimates.
 |---|---|---|---|---|---|
 | 2026-09-14 | `1fe27a4` / `76385610a91b` | Kaggle CPU (`kurtvalcorza/dimer-nb2-rtdetr-detection` v1) | Default sample path | 217.4 s | **PASSED** — 8/8 ok code cells executed cleanly, 10 files, 172 MB staged |
 | 2026-09-15 | `26fd892` / `315909a9b1a7` | Kaggle GPU (Tesla T4, `kurtvalcorza/dimer-nb2-rtdetr-detection` v2) | Default E2E adaptation path (all 14 code cells: COCO demo, input probes, 40-image sign dataset validation, baseline AP 0.000, 3-epoch bounded FT with frozen ResNet-50-vd backbone, post-adaptation AP 0.9161 / AP50 0.9273 / AP75 0.9273, unseen inference, fresh reload verification, all 6 outputs written) | 240.6 s | **PASSED** — 14/14 ok code cells executed cleanly (1 restart after install cell), 10 files, 172 MB staged, adapter exported |
+| 2026-10-04 | `46a300c` / `929be36ca616` (PR #10) | Google Colab (browser, maintainer-run), Tesla T4; uv-isolated CPython 3.12.12, torch 2.14.0+cu130 | Workshop `DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, default STANDARD path only (`USE_BYOD=False`) | not recorded (environment setup 70 s) | **RAN CLEAN, METRICS DIFFER**: 29/29 code cells, counts 1..29, no errors; adapted test AP differs from the 2026-09-30 T4 run (see the 2026-10-04 record below); not merge evidence |
 
 ## Current status
 
@@ -246,3 +247,32 @@ Notebook blob `395cb935` (`b7bb099`, the `ade681b` source) → `929be36c` (works
 - **Line limit:** the 49,902-character YOLOX carrier line and the carried lock are written as parenthesised runs of string pieces of at most 1,000 characters (`ast.literal_eval` equality asserted by the generator and tests); the longest notebook line is now under 2,000 characters.
 - **Local CPU stand-in (not clean-runtime evidence):** one Run all of blob `929be36c` with nbclient in a Linux x86_64 WSL kernel, CUDA hidden, real weights, tier STANDARD: 29/29 code cells, no errors, 3,914 s. Dataset `823df4cf…302169` and split 36/12/12 match the 2026-09-30 run; pre-adaptation rows match it exactly (RT-DETR AP 0.0495; YOLOX-S AP 0.0344, AP50 0.0376). Adapted rows on CPU: RT-DETR AP 0.8874 / AP50 0.9153; YOLOX-S AP 0.6994 / AP50 1.0000 (T4 2026-09-30: 0.9704 / 0.9883 and 0.8273 / 1.0000). The adapted gap is attributed to CPU-versus-CUDA training numerics (inferred, not isolated); a hosted T4 run of this blob is the comparison that counts.
 - **Still required:** a hosted T4 STANDARD Run all of this blob; then the items already listed as open above.
+
+### Maintainer-supplied Colab execution of `46a300c` (blob `929be36c`) — 2026-10-04
+
+- **File:** [executed notebook](execution-evidence/2026-10-04/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop_46a300c_colab-browser-t4.ipynb), archived byte-for-byte, SHA-256 `3fa98f83f3185a8113a8341b01d1c1a9e4f3ab2333824b06179762a83b07655b`.
+- **Source match:** all 60 cells match blob `929be36c` at `46a300c` with no source diffs at all, not even `# @param` lines. Cell ids and order are unchanged.
+- **Executor:** Google Colab (browser, maintainer-run), Tesla T4. Kernel Python 3.13.15. Isolated uv environment `/content/dimer_isolated_env`: CPython 3.12.12, 57 locked packages, built in 70 s, no restart. torch 2.14.0+cu130, torchvision 0.29.0+cu130, Transformers 4.57.6, NumPy 2.1.3, `pin_mismatches` empty, device `cuda:0`.
+- **Execution:** 29/29 code cells, counts 1..29 in order, no saved errors. Tier STANDARD (RT-DETR, YOLOX-S); `USE_BYOD=False`. `run_id` `20261003T234112Z-c89195`, `experiment_id` `4870e50b…ef439529`. The saved notebook does not record wall time.
+- **Identical to 2026-09-30:**
+  - `dataset_sha256` `823df4cf…302169` and the 36/12/12 split;
+  - the validation pre-adaptation row (RT-DETR AP 0.0858; YOLOX-S AP 0.0756) and the test pre-adaptation rows;
+  - training-stage peak VRAM (2553 / 621 MiB);
+  - reload parity (differences 0.0) and metric replay (PASS 4/4).
+
+| Model | State | Test AP | AP50 | AP75 | 2026-09-30 T4 AP (`ade681b`) | 2026-09-26 T4 AP |
+|---|---|---:|---:|---:|---:|---:|
+| RT-DETR | pre | 0.0495 | 0.0495 | 0.0495 | 0.0495 | 0.0495 |
+| RT-DETR | adapted | 0.9299 | 0.9590 | 0.9590 | 0.9704 | 0.9737 |
+| YOLOX-S | pre | 0.0344 | 0.0376 | 0.0376 | 0.0344 | 0.1163 |
+| YOLOX-S | adapted | 0.8932 | 1.0000 | 1.0000 | 0.8273 | 0.8520 |
+
+- **What differs:** training losses diverge from epoch 1 (RT-DETR 37.1504 vs 37.1656), and so does everything downstream of training.
+  - Adapted validation AP: RT-DETR 0.9278 vs 0.8376; YOLOX-S 0.8794 vs 0.8245.
+  - Adapted test AP: RT-DETR −0.0405; YOLOX-S +0.0659.
+  - The gallery now draws a YOLOX-S advantage image (`sign-036`). This is consistent with the export holding 28 files instead of 27 (inferred).
+  - Bundle SHA-256 `9708a96f…60c508b3118`.
+- **Why this is unexplained:** T4 training is not bit-reproducible; epoch-1 losses also differed between the two earlier T4 runs. But the earlier same-code spread in RT-DETR adapted AP was 0.003, and here it is 0.04. The environment also changed at the same time (Python 3.12 in the uv venv, different wheel builds). Neither cause is isolated.
+- **CPU stand-in gap still open:** the T4 values sit between the CPU stand-in (RT-DETR 0.8874; YOLOX-S 0.6994) and the 2026-09-30 run, so this run neither confirms nor refutes the CPU-versus-CUDA attribution.
+- **Verdict:** the default path completed cleanly, but the adapted metrics don't match the 2026-09-30 T4 run, so this run is **not merge evidence** for this head.
+- **Boundary:** default STANDARD path only; FULL, export re-run and BYOD were not exercised. Saved outputs were inspected; execution was not independently repeated. Status remains **Candidate**.
