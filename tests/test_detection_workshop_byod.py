@@ -218,15 +218,17 @@ def test_parity_rejects_export_that_loses_adaptation(tmp_path):
         ns["assert_byod_parity"]([{"label": CLASSES[0], "box": [0, 0, 1, 1], "score": 0.5}], [])
 
 
-def test_stale_guard_accepts_local_build_suffix():
-    from packaging.version import Version
-
+def test_pin_check_accepts_local_build_suffix():
+    # 2026-10-03: the in-kernel stale-import guard is gone (uv isolated environment); the runtime cell
+    # now checks the isolated environment's installed versions against the pins, same local-suffix rule.
     module = ast.parse(CELLS[5]["source"])
     module.body = [node for node in module.body if isinstance(node, ast.FunctionDef)]
-    ns = {"Version": Version}
-    exec(compile(module, "guard", "exec"), ns)
-    assert ns["stale_loaded_packages"]({"torch": "2.14.0+cu130"}, ["torch==2.14.0"]) == []
-    assert ns["stale_loaded_packages"]({"torch": "2.13.0+cu130"}, ["torch==2.14.0"]) == ["torch"]
+    ns = {}
+    exec(compile(module, "pin-check", "exec"), ns)
+    assert ns["pin_mismatches"]({"torch": "2.14.0+cu130"}, ["torch==2.14.0"]) == []
+    drifted = ns["pin_mismatches"]({"torch": "2.13.0+cu130"}, ["torch==2.14.0"])
+    assert drifted == [("torch", "2.13.0+cu130", "2.14.0")]
+    assert ns["pin_mismatches"]({}, ["torch==2.14.0"]) == [("torch", None, "2.14.0")]
 
 
 def test_implicit_split_positive_and_missing_coverage_negative(tmp_path):
