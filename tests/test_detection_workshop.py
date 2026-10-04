@@ -116,14 +116,15 @@ def test_scipy_is_pinned_for_rtdetr_training():
     assert any(pin.startswith("scipy==") for pin in notebook_constants()["PINS"])
 
 
-def test_install_keeps_a_numpy_the_kernel_already_loaded():
+def test_nothing_is_installed_into_the_kernel():
     # Colab imports NumPy at startup; reinstalling it left 2.1.3 in memory over 2.5.3 on disk, which broke later
-    # imports (Notebook Spec RUN10 forbids a manual restart). The cell keeps a loaded NumPy 2.x and fails closed
-    # if any module it depends on was replaced underneath the kernel.
-    cells = ["".join(c["source"]) for c in json.loads(NOTEBOOK.read_text(encoding="utf-8"))["cells"] if c["cell_type"] == "code"]
-    install = next(cell for cell in cells if "pip" in cell and "install" in cell)
-    assert 'NUMPY_PRELOADED' in install and '"numpy" in sys.modules' in install
-    assert "if stale:" in install and "Restart session" in install
+    # imports (Notebook Spec RUN10 forbids a manual restart). Since 2026-10-03 the pins live in a uv isolated
+    # environment, so no cell runs pip in the kernel and there is no restart guard left to trip.
+    for cell in code_cells():
+        assert '"-m", "pip"' not in cell and "'-m', 'pip'" not in cell
+        assert "Restart session" not in cell and "NUMPY_PRELOADED" not in cell
+    install = next(cell for cell in code_cells() if "uv" in cell and "pip" in cell and "install" in cell)
+    assert "--require-hashes" in install and '"--only-binary", ":all:"' in install
 
 
 def test_no_undefined_names_across_code_cells():

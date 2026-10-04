@@ -1,0 +1,17 @@
+# Isolated environment of tutorials/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb (2026-10-03).
+# Exact pins carried over from the notebook's former in-kernel install (the PINS list of the section 2 cell):
+torch==2.14.0
+torchvision==0.29.0
+torchaudio==2.11.0
+transformers==4.57.6
+safetensors==0.8.0
+# numpy: the former cell kept a NumPy 2.x the hosted kernel had already loaded (2.1.3 on Colab, 2026-09-30 run)
+# and otherwise installed this pin.
+numpy==2.1.3
+pillow==11.3.0
+huggingface-hub==0.36.2
+# RT-DETR training loss: Transformers' Hungarian matcher needs SciPy.
+scipy==1.18.1
+# The former cell installed ranges (matplotlib>=3.9,<3.11; pandas>=2.2,<3.1); these are the newest versions inside them.
+matplotlib==3.10.9
+pandas==3.0.6
