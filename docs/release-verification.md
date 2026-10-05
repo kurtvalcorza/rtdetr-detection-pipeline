@@ -22,7 +22,8 @@ CI runs `tools/validate_release_assets.py`, which checks:
   `src/rtdetr_detection_pipeline/pipeline.py` after the generator's documented rewrites; the
   inline `MANIFEST` equal to the committed snapshot manifest and the inline `PINS` equal to the
   `pyproject.toml` runtime pins; the notebook byte-identical (on LF) to `tools/build_notebook.py`
-  output for its recorded revision; the pinned-install cell with its restart-on-stale-import guard;
+  output for its recorded revision; the isolated-environment bootstrap cell (generator /2.2: hash-locked `uv`
+  environment, nothing installed into the kernel, no restart);
   `NOTEBOOK_SOURCE` recorded in exports;
 - `MODEL_ID`/`MODEL_REVISION` are bound only in the carried module cell (and repeated in the inline
   manifest, which the notebook asserts against the module before fetching), the revision is a 40-hex
@@ -71,7 +72,7 @@ Before changing the registry status from `Candidate` to `Release-grade`:
    in `metadata.dimer.generated_from` and that the installed core package versions equal the inline
    `PINS` (= `pyproject.toml`);
 5. verify every default-path stage completes:
-   - pinned runtime installed from the inline `PINS` with no GitHub access;
+   - pinned runtime installed from the inline `PINS` (hash-locked, into the isolated environment of Section 1) with no GitHub access;
    - the carried module cell executes (defines `RTDetrDetectionPipeline`, `validate_inputs`,
      `evaluation_report`, `box_iou`, `verify_snapshot`, `stage_missing_files`, the 80 `LABELS`) with no
      import of the repository package;
