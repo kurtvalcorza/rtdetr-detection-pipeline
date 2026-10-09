@@ -2,9 +2,9 @@
 
 `tutorials/rtdetr_detection_colab.ipynb` (`E2E`, **standalone** carrier) is a
 **release candidate** until the exact notebook revision has executed top-to-bottom in a clean
-supported runtime. Unit tests, JSON validation, code-cell compilation, the generator parity checks
+supported runtime. The current blob `e2ab45177aec` (commit `0feefe5`) completed Run all in one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-09 (Colab CLI 0.7.4 sequential execution, 15/15 code cells, 130.4 s wall; held-out AP 0.9452 / AP50 0.9578 from baseline 0.000; reload raw-output parity 0.0 on 13 images); status stays **Candidate** (REL14) and the REL12 BYOD exercise has not run on a hosted runtime. Unit tests, JSON validation, code-cell compilation, the generator parity checks
 and `tools/validate_release_assets.py` are necessary checks but are **not** runtime evidence under
-DIMER Notebook Specification 2.0. This file is the durable release-gate record for the notebook.
+DIMER Notebook Specification 2.2. This file is the durable release-gate record for the notebook.
 
 ## Automatic coverage (static, every pull request)
 
@@ -13,16 +13,17 @@ CI runs `tools/validate_release_assets.py`, which checks:
 - notebook JSON parses; every code cell compiles as plain Python (no `%`/`!` magics); no
   persisted outputs or execution counts; no unresolved placeholder markers; every code cell
   is preceded by an explanatory markdown cell;
-- exactly one tutorial notebook, named in `tutorials/README.md` with its `TASK-INFERENCE`
+- the primary tutorial notebook (plus the supplemental workshop), named in `tutorials/README.md` with its `E2E`
   profile, the notebook-spec version and the standalone carrier; `metadata.dimer` declares that
-  profile, spec `2.0`, a pedagogical mode, `standalone: true` and `generated_from` (repository, revision, module
+  profile, spec `2.2`, a pedagogical mode, `standalone: true` and `generated_from` (repository, revision, module
   SHA-256, generator);
 - the standalone carrier (ST1–ST6, PAR1–PAR3): no clone, repository install or repository import on
   the primary path; exactly one cell tagged `embedded_module` equal to
   `src/rtdetr_detection_pipeline/pipeline.py` after the generator's documented rewrites; the
   inline `MANIFEST` equal to the committed snapshot manifest and the inline `PINS` equal to the
   `pyproject.toml` runtime pins; the notebook byte-identical (on LF) to `tools/build_notebook.py`
-  output for its recorded revision; the pinned-install cell with its restart-on-stale-import guard;
+  output for its recorded revision; the isolated-environment bootstrap cell (generator /2.2: hash-locked `uv`
+  environment, nothing installed into the kernel, no restart);
   `NOTEBOOK_SOURCE` recorded in exports;
 - `MODEL_ID`/`MODEL_REVISION` are bound only in the carried module cell (and repeated in the inline
   manifest, which the notebook asserts against the module before fetching), the revision is a 40-hex
@@ -66,12 +67,13 @@ Before changing the registry status from `Candidate` to `Release-grade`:
 2. open that exact notebook revision in a new CPU (or CUDA) runtime (Colab, or the Kaggle
    executor above) with **no repository checkout** and a clean model cache;
 3. run the notebook top-to-bottom without editing implementation cells (form parameters at their
-   defaults for the sample path: `USE_BYOD = False`, `threshold = 0.3`);
+   defaults for the sample path: `USE_BYOD_IMAGE = False`, `USE_BYOD_DATASET = False`, `threshold = 0.3`);
+   Run all must complete in one pass with no restart (Section 1 builds the isolated environment);
 4. verify that Section 1 reports `NOTEBOOK_SOURCE.repository_revision` equal to the revision recorded
    in `metadata.dimer.generated_from` and that the installed core package versions equal the inline
    `PINS` (= `pyproject.toml`);
 5. verify every default-path stage completes:
-   - pinned runtime installed from the inline `PINS` with no GitHub access;
+   - pinned runtime installed from the inline `PINS` (hash-locked, into the isolated environment of Section 1) with no GitHub access;
    - the carried module cell executes (defines `RTDetrDetectionPipeline`, `validate_inputs`,
      `evaluation_report`, `box_iou`, `verify_snapshot`, `stage_missing_files`, the 80 `LABELS`) with no
      import of the repository package;
@@ -96,6 +98,17 @@ Before changing the registry status from `Candidate` to `Release-grade`:
    - `outputs/rtdetr_detection_result.json`, `outputs/rtdetr_detection_detections.csv` and
      `outputs/rtdetr_detection_annotated.png` written with `NOTEBOOK_SOURCE`, model revision, model
      licence, runtime versions and device;
+   - the adaptation stages: the 40-image sign dataset validated (`validate_dataset`) and split 30/10 with
+     every class in both splits (`check_split_coverage`); the re-headed baseline AP 0.000 on the held-out
+     split; the bounded fine-tune (Section 8 rebuilds the model from the snapshot first, prints
+     `train_seconds`, and asserts the reported freeze state equals the model's `requires_grad` state);
+     held-out AP / AP50 / AP75 next to the zero-training reference (the unadapted COCO detector on the
+     held-out stop signs); inference on the three seed-99 images; export of `outputs/rtdetr_adapter.pt`
+     with its training settings; fresh reload with raw-output parity (logits and boxes of every query on
+     13 images within `PARITY_TOLERANCE`, at least one detection compared); and
+     `outputs/rtdetr_detection_new_data.csv` / `outputs/rtdetr_detection_new_data_annotated.png`;
+   - REL12 (separate runs): `USE_BYOD_DATASET = True` with `BYOD_DATASET_PATH` on a valid folder/zip
+     reaches evaluate, export and fresh reload; a malformed dataset is refused naming the row and rule;
 6. verify the exports exist and the interpretation section matches the observed path;
 7. record the notebook Git blob id, commit, runtime (platform, Python, PyTorch, Transformers, device),
    model identifier and immutable revision, whether the model cache was clean, outcome, produced
@@ -117,18 +130,20 @@ they are measurements for the stated runtime, not general estimates.
 |---|---|---|---|---|---|
 | 2026-09-14 | notebook blob `901896a1d0e5` (commit `caba03e`, generated at `c15c834`; `NOTEBOOK_SOURCE.repository_revision` = `c15c834…`) | Local Windows-venv harness (`run_nb_local.py`: nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default synthetic path, all 8 code cells: pinned install skipped (pre-installed), `stage_missing_files` fetched all 4 manifest entries (172 MB) from the Hub cache at the pinned revision into the scratch `weights/`, `verify_snapshot` PASS (4 files), `detect` → 3 boxes (`stop sign` 0.977, `clock` 0.965, `traffic light` 0.931), `evaluation_report` `sample-sanity` (IoU stop sign 0.877, traffic light 0.965, clock 0.983, sports ball 0.000 — no same-label detection), 5 outputs written | 25.5 s | PASS — pre-flight only; not promotion evidence |
 | 2026-09-15 | `feat/rtdetr-e2e-finetuning` | Local Windows-venv harness (nbclient 0.11.0, fresh `python3` kernel, `CUDA_VISIBLE_DEVICES=-1`, `DIMER_NOTEBOOK_CI_PREINSTALLED=1`), Python 3.12.10, torch 2.14.0+cu130, transformers 4.57.6 | Default E2E path, all 13 sections: COCO demonstration (3 boxes matched), degenerate input probes, 40-image sign dataset generation & validation, baseline evaluation (AP 0.000, AP50 0.000), 3-epoch bounded fine-tuning (backbone frozen, 19.3M trainable parameters), post-adaptation evaluation (AP 0.849, AP50 0.854; stop-sign 1.000, yield-sign 0.914, speed-limit-sign 0.646), unseen image inference, artifact export to `rtdetr_adapter.pt` (171.7 MB) and fresh reload identity assertion, 6 outputs written | 142.2 s | PASS — pre-flight only; ready for hosted clean-room GPU verification |
+| 2026-10-09 | review branch `review/rtdetr_detection_colab-2026-10-02` (RTD fixes, generator /2.2; worked-answer source) | Sequential in-process cell executor (`DIMER_NOTEBOOK_CI_PREINSTALLED=1`, `CUDA_VISIBLE_DEVICES=-1`, pre-staged verified snapshot), Windows laptop CPU, torch 2.13.0+cpu (not the 2.14.0 pin), transformers 4.57.6, scipy 1.18.1 | Default E2E path, all code cells (repeated on the final source: identical numbers; BYOD probes: a 16-image synthetic zip through `BYOD_DATASET_PATH` reached evaluate, export and fresh reload with parity 0.0; a zip with an out-of-bounds box was refused naming record 0 box 0; `BYOD_IMAGE_PATH` ran outside Colab): COCO scene 3/4 matched (IoU 0.877 / 0.965 / 0.983, sports ball 0.0); degenerate probes blank 1 at 0.3 (`train` 0.333) / 87 at 0.05, noise 1 at 0.3 (`cat` 0.391) / 254 at 0.05; baseline AP 0.000; fine-tune 19,259,121 of 42,733,137 parameters, epoch losses 39.62 / 25.58 / 19.30, `train_seconds` 137.4; held-out AP 0.8494 / AP50 0.8535 / AP75 0.8535; zero-training reference (unadapted COCO detector, 5 held-out stop signs) AP 1.000, adapted stop-sign AP 1.000; unseen images: 2 duplicate yield-sign detections (images 0 and 1), 1 missed speed-limit sign, two scores 0.302; reload raw-output parity on 13 images (24 detections at 0.3) max difference 0.0. Rerun probe: Section 8 rerun unchanged reproduced first-epoch loss 39.6166; with `FREEZE_BACKBONE = False` 42,733,137 trainable, backbone unfrozen in the model | not summed | **Local pre-flight PASS** — not a supported runtime; worked answers in the notebook quote this run |
 
 ### Manual clean-runtime evidence
 
 | Date (UTC) | Commit / notebook blob | Executor | Path exercised | Wall | Outcome |
 |---|---|---|---|---|---|
+| 2026-10-09 | `0feefe5` / `e2ab45177aec` (`NOTEBOOK_SOURCE.repository_revision` `2ce1925`, the source revision the notebook was generated from; `2ce1925..0feefe5` is the review-fix commit `23bb7a7` and a test-only commit; generator `build_notebook.py/2.2`, `notebook_spec` 2.2) | Colab CLI 0.7.4 sequential execution (`colab exec -f`, not a browser Run all; order from `exec.log`, no execution counts), fresh Colab Tesla T4 VM (session `suite-rtdetr-0feefe5-6128`), committed blob fetched at the 40-char SHA and Git-blob verified, no repository checkout, clean model cache, BYOD gates off, sample-path defaults; kernel Python 3.13.15; isolated uv environment Python 3.12.12, 48 locked packages, built in 67 s; torch 2.14.0+cu130, transformers 4.57.6, NumPy 2.5.3, Pillow 11.3.0, SciPy 1.18.1; device `cuda:0` | Default E2E path, all 15 code cells (cells 3–4 are the carried modules and print nothing): 4 snapshot files fetched and verified; COCO scene 3/4 matched (IoU 0.877 / 0.965 / 0.983, sports ball 0.0); degenerate probes blank 1 at 0.3 (`train` 0.333) / 87 at 0.05, noise 1 at 0.3 (`cat` 0.391) / 254 at 0.05; 40 records / 82 boxes, split 30 / 10 with every class in both; baseline AP 0.000; fine-tune 19,259,121 of 42,733,137 parameters, backbone frozen in the model, epoch losses 39.65 / 25.20 / 19.44, `train_seconds` 11.5; held-out AP 0.9452 / AP50 0.9578 / AP75 0.9578 (per-class AP50 stop 0.934, yield 0.939, speed-limit 1.0); zero-training reference on 5 held-out stop signs: unadapted COCO detector AP 1.000, adapted 0.934; unseen images all 5 signs found, image 1 with two extra `yield-sign` boxes, lowest kept score 0.307; artifact 174,923,973 B (sha256 `2b90fa3c…`) carries its training settings; fresh reload raw-output parity on 13 images × 300 queries, 26 detections at 0.3, max difference 0.0; 8 outputs written | 130.4 s | **PASSED in one pass, no restart** — 0 errors. Evidence (byte-exact): `docs/execution-evidence/2026-10-09-0feefe5/` — executed notebook sha256 `56a1d13467ff…`, `exec.log` `0dbdad489ce3…`, `run_summary.json` `50839cfd6ade…`. The worked answers quote the 2026-10-09 local CPU run; this run differs: AP 0.9452 not ~0.85, and the adapted stop-sign AP (0.934) is below the COCO reference (1.000) rather than equal. One seeded split, one runtime, no dispersion estimate; BYOD (REL12) not exercised on a hosted runtime |
 | 2026-09-14 | `1fe27a4` / `76385610a91b` | Kaggle CPU (`kurtvalcorza/dimer-nb2-rtdetr-detection` v1) | Default sample path | 217.4 s | **PASSED** — 8/8 ok code cells executed cleanly, 10 files, 172 MB staged |
 | 2026-09-15 | `26fd892` / `315909a9b1a7` | Kaggle GPU (Tesla T4, `kurtvalcorza/dimer-nb2-rtdetr-detection` v2) | Default E2E adaptation path (all 14 code cells: COCO demo, input probes, 40-image sign dataset validation, baseline AP 0.000, 3-epoch bounded FT with frozen ResNet-50-vd backbone, post-adaptation AP 0.9161 / AP50 0.9273 / AP75 0.9273, unseen inference, fresh reload verification, all 6 outputs written) | 240.6 s | **PASSED** — 14/14 ok code cells executed cleanly (1 restart after install cell), 10 files, 172 MB staged, adapter exported |
 | 2026-10-04 | `46a300c` / `929be36ca616` (PR #10) | Google Colab (browser, maintainer-run), Tesla T4; uv-isolated CPython 3.12.12, torch 2.14.0+cu130 | Workshop `DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, default STANDARD path only (`USE_BYOD=False`) | not recorded (environment setup 70 s) | **RAN CLEAN, METRICS DIFFER**: 29/29 code cells, counts 1..29, no errors; adapted test AP differs from the 2026-09-30 T4 run (see the 2026-10-04 record below); not merge evidence |
 
 ## Current status
 
-Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly (1 automatic restart after the pinned install cell), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.
+Clean-room execution in a **supported runtime** (Kaggle GPU, Tesla T4) has been recorded above. All 14/14 code cells executed cleanly after one **manual** restart following the in-kernel install cell (that revision was therefore not Run-all conformant; the isolated environment of generator /2.2 removes the install and the restart), staging the 4-file 172 MB snapshot, validating the 40-image sign dataset, establishing baseline AP 0.000, running 3-epoch bounded fine-tuning in 11.4 s on GPU, achieving post-adaptation AP 0.9161 and AP50 0.9273, verifying fresh reload equivalence, and writing all 6 release outputs (`rtdetr_adapter.pt`, `result.json`, `evaluation_report.json`, `input_manifest.json`, `detections.csv`, `annotated.png`). Static validation (`tools/validate_release_assets.py`), generator parity checks (`--check` OK), the offline unit suite (31/31 passed), local pre-flight execution, and hosted clean-room GPU execution all confirm the E2E adaptation profile.
 
 ## Supplemental closed-set guided notebook — 2026-09-26 remediation
 

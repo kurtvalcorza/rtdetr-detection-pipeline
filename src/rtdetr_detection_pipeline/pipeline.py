@@ -8,9 +8,13 @@ the weights are SafeTensors, and no model-repository code is executed.
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import math
+import time
+import zipfile
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -123,6 +127,12 @@ MAX_EVAL_DETECTIONS = 100
 MAX_IMAGE_SIDE = 4096
 MIN_IMAGE_SIDE = 16
 MAX_CLASSES = 1000
+# Dataset contract ceilings (validate_dataset / load_detection_dataset).
+MAX_DATASET_RECORDS = 500
+MAX_BOXES_PER_IMAGE = 100
+DATASET_ANNOTATIONS = "annotations.csv"
+DATASET_COLUMNS = ("file", "label", "x0", "y0", "x1", "y1")
+DATASET_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 
 # Training defaults for the bounded tutorial adaptation.
 DEFAULT_EPOCHS = 3
@@ -368,14 +378,24 @@ def validate_dataset(
     *,
     epochs: int = DEFAULT_EPOCHS,
 ) -> dict[str, Any]:
-    """Validate adaptation dataset records and return the dataset manifest."""
+    """Validate adaptation dataset records and return the dataset manifest.
+
+    Rules (each refusal names the record and the rule): 1..MAX_DATASET_RECORDS records; every record
+    holds an image, at least one box and one label per box (at most MAX_BOXES_PER_IMAGE); every box
+    lies inside the image with positive width and height (x0 < x1, y0 < y1); every label is in
+    ``class_names``; and no image appears twice (identical pixels). Per-split class coverage is a
+    separate check, ``check_split_coverage``, run after the split.
+    """
     if not records:
         raise ValueError("dataset must hold at least one record")
+    if len(records) > MAX_DATASET_RECORDS:
+        raise ValueError(f"dataset holds {len(records)} records > MAX_DATASET_RECORDS {MAX_DATASET_RECORDS}")
     if not 1 <= epochs <= 100:
         raise ValueError(f"epochs must be in 1..100, got {epochs}")
     valid_classes = set(class_names)
     total_boxes = 0
     observed_classes: set[str] = set()
+    seen_images: dict[str, int] = {}
 
     for idx, record in enumerate(records):
         if "image" not in record or "boxes" not in record or "labels" not in record:
@@ -385,6 +405,15 @@ def validate_dataset(
         labels = record["labels"]
         if len(boxes) != len(labels):
             raise ValueError(f"record {idx}: {len(boxes)} boxes but {len(labels)} labels")
+        if not boxes:
+            raise ValueError(f"record {idx} has no boxes; every training image needs a labelled box")
+        if len(boxes) > MAX_BOXES_PER_IMAGE:
+            raise ValueError(f"record {idx} has {len(boxes)} boxes > {MAX_BOXES_PER_IMAGE} max")
+        digest = hashlib.sha256(f"{img.size}".encode() + img.tobytes()).hexdigest()
+        if digest in seen_images:
+            first = seen_images[digest]
+            raise ValueError(f"record {idx} repeats the image of record {first} (identical pixels)")
+        seen_images[digest] = idx
         width, height = img.size
         for b_idx, box in enumerate(boxes):
             if len(box) != 4:
@@ -394,6 +423,11 @@ def validate_dataset(
                 raise ValueError(
                     f"record {idx} box {b_idx} [{x0}, {y0}, {x1}, {y1}] "
                     f"outside image bounds {(width, height)}"
+                )
+            if not (x0 < x1 and y0 < y1):
+                raise ValueError(
+                    f"record {idx} box {b_idx} [{x0}, {y0}, {x1}, {y1}] has zero area; "
+                    "a box needs x0 < x1 and y0 < y1"
                 )
         for label in labels:
             if label not in valid_classes:
@@ -409,6 +443,107 @@ def validate_dataset(
         "epochs": epochs,
         "verdict": "accepted",
     }
+
+
+def check_split_coverage(
+    splits: Mapping[str, Sequence[Mapping[str, Any]]],
+    class_names: Sequence[str],
+) -> dict[str, list[str]]:
+    """Refuse a split in which a class has no box (it could not be trained or scored there)."""
+    coverage: dict[str, list[str]] = {}
+    for split_name, split_records in splits.items():
+        present = {label for record in split_records for label in record["labels"]}
+        missing = [name for name in class_names if name not in present]
+        if missing:
+            raise ValueError(
+                f"the {split_name} split ({len(split_records)} images) has no box of class(es) {missing}; "
+                "every split must cover every class: add images of those classes or change the split seed"
+            )
+        coverage[split_name] = sorted(present)
+    return coverage
+
+
+def _float_field(value: Any, row: int, column: str) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{DATASET_ANNOTATIONS} row {row}: {column}={value!r} is not a number") from None
+    if not math.isfinite(number):
+        raise ValueError(f"{DATASET_ANNOTATIONS} row {row}: {column}={value!r} is not finite")
+    return number
+
+
+def load_detection_dataset(path: str | Path) -> tuple[list[dict[str, Any]], tuple[str, ...]]:
+    """Read a labelled detection dataset from a folder or a .zip holding ``annotations.csv`` and images.
+
+    ``annotations.csv`` has the header ``file,label,x0,y0,x1,y1``: one row per box, pixel xyxy
+    coordinates, ``file`` relative to the folder (or zip root). Returns ``(records, class_names)``
+    with the class names in first-appearance order; ``validate_dataset`` then checks every record.
+    """
+    source = Path(str(path)).expanduser()
+    if source.is_dir():
+        names = {p.relative_to(source).as_posix() for p in source.rglob("*") if p.is_file()}
+
+        def read(name: str) -> bytes:
+            return (source / name).read_bytes()
+
+    elif source.is_file() and zipfile.is_zipfile(source):
+        archive = zipfile.ZipFile(source)
+        names = {n for n in archive.namelist() if not n.endswith("/")}
+
+        def read(name: str) -> bytes:
+            return archive.read(name)
+
+    else:
+        raise ValueError(f"dataset path {str(source)!r} is neither a folder nor a .zip file")
+    prefix = ""
+    if DATASET_ANNOTATIONS not in names:
+        nested = sorted(n for n in names if n.endswith("/" + DATASET_ANNOTATIONS))
+        if len(nested) != 1:
+            raise ValueError(
+                f"{source.name}: expected one {DATASET_ANNOTATIONS} at its root "
+                f"(header {','.join(DATASET_COLUMNS)})"
+            )
+        prefix = nested[0][: -len(DATASET_ANNOTATIONS)]
+    reader = csv.DictReader(io.StringIO(read(prefix + DATASET_ANNOTATIONS).decode("utf-8-sig")))
+    if tuple(reader.fieldnames or ())[: len(DATASET_COLUMNS)] != DATASET_COLUMNS:
+        raise ValueError(
+            f"{DATASET_ANNOTATIONS}: header must start with {','.join(DATASET_COLUMNS)}, "
+            f"got {reader.fieldnames}"
+        )
+    grouped: dict[str, dict[str, list[Any]]] = {}
+    class_order: list[str] = []
+    suffixes = "/".join(DATASET_IMAGE_SUFFIXES)
+    for row_number, row in enumerate(reader, start=2):
+        where = f"{DATASET_ANNOTATIONS} row {row_number}"
+        file_name = (row["file"] or "").strip()
+        label = (row["label"] or "").strip()
+        if not file_name or not label:
+            raise ValueError(f"{where}: file and label must be non-empty")
+        if not file_name.lower().endswith(DATASET_IMAGE_SUFFIXES):
+            raise ValueError(f"{where}: {file_name!r} is not a {suffixes} image")
+        if prefix + file_name not in names:
+            raise ValueError(f"{where}: image {file_name!r} is not in the dataset")
+        box = [_float_field(row[c], row_number, c) for c in DATASET_COLUMNS[2:]]
+        entry = grouped.setdefault(file_name, {"boxes": [], "labels": []})
+        entry["boxes"].append(box)
+        entry["labels"].append(label)
+        if label not in class_order:
+            class_order.append(label)
+    if not grouped:
+        raise ValueError(f"{DATASET_ANNOTATIONS} holds no rows")
+    if len(grouped) > MAX_DATASET_RECORDS:
+        raise ValueError(f"{len(grouped)} images > MAX_DATASET_RECORDS {MAX_DATASET_RECORDS}")
+    records: list[dict[str, Any]] = []
+    for file_name, entry in grouped.items():
+        try:
+            image = Image.open(io.BytesIO(read(prefix + file_name)))
+            image.load()
+        except Exception as exc:  # name the file for any decoder failure
+            raise ValueError(f"image {file_name!r} could not be read: {exc}") from None
+        record = {"image": image.convert("RGB"), "boxes": entry["boxes"], "labels": entry["labels"]}
+        records.append({**record, "file": file_name})
+    return records, tuple(class_order)
 
 
 def evaluation_report(
@@ -491,6 +626,7 @@ class RTDetrDetectionPipeline:
     base_state_digest: str | None = None
     adapted: bool = False
     reinitialised: tuple[str, ...] = field(default_factory=tuple)
+    training: dict[str, Any] | None = None
 
     @classmethod
     def from_pretrained(
@@ -674,9 +810,15 @@ class RTDetrDetectionPipeline:
             torch.cuda.manual_seed_all(seed)
         rng = np.random.default_rng(seed)
 
+        # Set requires_grad in BOTH directions, so a later call with freeze_backbone=False really
+        # unfreezes a backbone an earlier call froze (the flag must reach the computation).
+        for p in self.model.parameters():
+            p.requires_grad = True
         if freeze_backbone:
             for p in self.model.model.backbone.parameters():
                 p.requires_grad = False
+        started_from_adapted = self.adapted
+        started = time.perf_counter()
 
         trainable = [p for p in self.model.parameters() if p.requires_grad]
         optimizer = torch.optim.AdamW(trainable, lr=learning_rate, weight_decay=1e-4)
@@ -734,6 +876,8 @@ class RTDetrDetectionPipeline:
         self.adapted = True
 
         return {
+            "started_from_adapted": started_from_adapted,
+            "train_seconds": round(time.perf_counter() - started, 1),
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": float(learning_rate),
@@ -750,6 +894,24 @@ class RTDetrDetectionPipeline:
             "model_id": MODEL_ID,
             "model_revision": MODEL_REVISION,
         }
+
+    def raw_outputs(self, images: Sequence[Image.Image]) -> list[dict[str, np.ndarray]]:
+        """Pre-threshold model outputs per image: class logits (queries x classes) and normalised boxes."""
+        import torch
+
+        rows = []
+        self.model.eval()
+        for image in images:
+            inputs = self.processor(images=validate_image(image), return_tensors="pt").to(self.device)
+            with torch.inference_mode():
+                outputs = self.model(**inputs)
+            rows.append(
+                {
+                    "logits": outputs.logits[0].detach().float().cpu().numpy(),
+                    "pred_boxes": outputs.pred_boxes[0].detach().float().cpu().numpy(),
+                }
+            )
+        return rows
 
     def evaluate(
         self,
@@ -782,9 +944,21 @@ class RTDetrDetectionPipeline:
             "model_revision": MODEL_REVISION,
         }
 
-    def save_artifact(self, path: str | Path, *, notes: str | None = None) -> dict[str, Any]:
-        """Write adapted weights and provenance as one artifact; return its descriptor."""
+    def save_artifact(
+        self,
+        path: str | Path,
+        *,
+        notes: str | None = None,
+        training: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Write adapted weights and provenance as one artifact; return its descriptor.
+
+        ``training`` (the ``finetune`` return value) is stored with the weights so the artifact
+        records how it was produced (learning rate, batch size, seed, freeze state, epoch losses).
+        """
         import torch
+
+        training_record = json.loads(json.dumps(dict(training), default=str)) if training else None
 
         artifact_path = Path(path)
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
@@ -797,6 +971,7 @@ class RTDetrDetectionPipeline:
             "adapted": self.adapted,
             "base_state_digest": self.base_state_digest,
             "notes": notes or "",
+            "training": training_record,
             "state_dict": {k: v.detach().cpu() for k, v in self.model.state_dict().items()},
         }
         torch.save(payload, artifact_path)
@@ -807,6 +982,7 @@ class RTDetrDetectionPipeline:
             "format": ARTIFACT_FORMAT,
             "class_names": list(self.class_names),
             "tensors": len(payload["state_dict"]),
+            "training": training_record,
             "base_state_digest": self.base_state_digest,
             "model_id": MODEL_ID,
             "model_revision": MODEL_REVISION,
@@ -841,5 +1017,6 @@ class RTDetrDetectionPipeline:
         pipe = cls.from_pretrained(device=device, weights_dir=weights_dir, class_names=names)
         pipe.model.load_state_dict(payload["state_dict"], strict=True)
         pipe.adapted = True
+        pipe.training = payload.get("training")
         pipe.source = f"artifact:{artifact_path.name}"
         return pipe
