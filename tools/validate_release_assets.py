@@ -38,6 +38,8 @@ EXPECTED_OUTPUTS = (
     "rtdetr_detection_result.json",
     "rtdetr_detection_detections.csv",
     "rtdetr_detection_annotated.png",
+    "rtdetr_detection_new_data.csv",
+    "rtdetr_detection_new_data_annotated.png",
     "rtdetr_adapter.pt",
 )
 
@@ -49,7 +51,8 @@ CODE_MARKERS = (
     "threshold = 0.3",
     "('blank', blank_scene()), ('noise', noise_scene(0))",
     "records = sign_dataset(N_IMAGES, seed=DATASET_SEED)",
-    "dataset_manifest = validate_dataset(records, SIGN_CLASSES, epochs=EPOCHS)",
+    "dataset_manifest = validate_dataset(records, SIGN_CLASSES)",
+    "check_split_coverage({'train': train_records, 'held_out': held_out}, SIGN_CLASSES)",
     "train_records, held_out = split_dataset(records, train_fraction=1.0 - HOLDOUT, seed=SEED)",
     "adapter = RTDetrDetectionPipeline.from_pretrained(weights_dir=WEIGHTS_DIR, class_names=SIGN_CLASSES, seed=SEED)",
     "baseline = adapter.evaluate(held_out)",
@@ -57,9 +60,13 @@ CODE_MARKERS = (
     "freeze_backbone=FREEZE_BACKBONE,",
     "adapted = adapter.evaluate(held_out)",
     "new_records = sign_dataset(3, seed=NEW_DATA_SEED)",
-    "descriptor = adapter.save_artifact(artifact_path, notes='RT-DETR R50-VD sign adaptation tutorial artifact')",
+    "descriptor = adapter.save_artifact(artifact_path, notes='RT-DETR R50-VD sign adaptation tutorial artifact', training=run)",
     "reloaded = RTDetrDetectionPipeline.load_artifact(artifact_path, weights_dir=WEIGHTS_DIR)",
-    "assert len(det_orig) == len(det_reloaded)",
+    "raw_fresh = reloaded.raw_outputs(compare_images)",
+    "assert detections_compared > 0",
+    "assert backbone_frozen == FREEZE_BACKBONE",
+    "coco_reference = average_precision(coco_stop_predictions, stop_references, ['stop-sign'])",
+    "byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)",
     "'model_revision': MODEL_REVISION",
     "'model_license': MODEL_LICENSE",
     "transformers.__version__",
@@ -71,8 +78,10 @@ MARKDOWN_MARKERS = (
     "**The default path really adapts the model:**",
     "The detection threshold is a **caller-owned request parameter**",
     "**Keep the two vocabularies apart.**",
-    "**The baseline is zero (or near-zero), and that is the expected starting point.**",
-    "**The backbone is frozen.**",
+    "**The baseline is zero by construction.**",
+    "**Every run starts from the pretrained model.**",
+    "**A zero-training reference.**",
+    "**Read the adaptation result honestly.**",
     "COCO mean average precision needs a labelled image set",
     "AP@[.50:.95]",
 )
@@ -97,7 +106,7 @@ FORBIDDEN_OUTSIDE_MODULE = (
 # Specification 2.0; see docs/release-verification.md for the release gate.
 # ---------------------------------------------------------------------------
 
-NOTEBOOK_SPEC = "2.0"
+NOTEBOOK_SPEC = "2.2"
 ALLOWED_PROFILES = {"E2E", "ARTIFACT-INFERENCE", "TASK-INFERENCE", "MULTI-CAPABILITY", "SMOKE"}
 STATUS_TOKENS = ("Candidate", "Release-grade")
 PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME)\b|Insert text here|Tooltip:", re.I)

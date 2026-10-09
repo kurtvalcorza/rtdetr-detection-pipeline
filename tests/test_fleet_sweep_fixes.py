@@ -199,17 +199,25 @@ RECORD = ROOT / "docs" / "release-verification.md"
 
 
 def test_swp_g_checkpoint_answers_quote_the_recorded_run():
-    """Every number in a Check-your-reasoning answer is in the recorded 2026-09-15 Kaggle T4 run (or the closing's IoU range)."""
+    """Every number in a Check-your-reasoning answer is in the recorded 2026-10-09 local CPU run of this revision
+    (release-verification local pre-flight table); the stale IoU range 0.91–0.97 is gone (RTD-m1)."""
     markdown = "\n".join(c["source"] for c in _nb(NB)["cells"] if c["cell_type"] == "markdown")
     checks = re.findall(r"<details><summary>Check your reasoning</summary>(.*?)</details>", markdown, re.S)
     assert len(checks) == 6
     record = RECORD.read_text(encoding="utf-8")
-    for number in ("AP 0.000", "0.9161", "0.9273", "240.6 s"):
-        assert number in record, number
-    assert "0.000" in checks[2] and "0.9161" in checks[4] and "0.9273" in checks[4] and "240.6 s" in checks[4]
-    assert "0.91–0.97" in checks[0] and "0.91–0.97" in markdown.split("## Interpretation and limits")[1]
-    # Run-dependent values the record does not keep are stated qualitatively, not invented.
-    assert not re.search(r"\d\.\d{3,}", checks[1]) and not re.search(r"loss \d", checks[3])
+    quoted = {
+        0: ("0.877", "0.965", "0.983"),
+        1: ("0.333", "0.391", "87", "254"),
+        2: ("0.000",),
+        3: ("39.62", "25.58", "19.30", "19,259,121", "42,733,137", "137"),
+        4: ("0.8494", "0.8535", "0.9161", "1.000"),
+        5: ("24 detections",),
+    }
+    for index, numbers in quoted.items():
+        for number in numbers:
+            assert number in checks[index], (index, number)
+            assert number.replace(" detections", "") in record, number
+    assert "0.91–0.97" not in markdown
 
 
 def _byod_file(nb: dict):
