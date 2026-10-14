@@ -24,7 +24,7 @@ NOTEBOOK = ROOT / "tutorials" / "DIMER_MultiModel_Closed_Set_Object_Detection_Wo
 LOCK = TOOLS / "detection-workshop-requirements.lock"
 REQUIREMENTS_IN = TOOLS / "detection-workshop-requirements.in"
 sys.path.insert(0, str(TOOLS))
-from detection_workshop_source import CELLS  # noqa: E402
+from detection_workshop_source import CELLS, INSERTED_CELLS  # noqa: E402
 from detection_workshop_uv import PIECE_LIMIT, pieces, split_long_lines  # noqa: E402
 
 
@@ -64,8 +64,14 @@ def test_only_the_two_leading_cells_run_in_the_kernel():
     assert ids == ["dimer-detection-workshop-uv-env", "dimer-detection-workshop-uv-route"]
     assert [cell_id for cell_id, _ in code_sources()][:2] == ids
     # Every DET review cell keeps its numbered id after the inserted infrastructure cells.
-    numbered = [c["id"] for c in notebook()["cells"] if not c["id"].startswith("dimer-detection-workshop-uv")]
+    ids = [c["id"] for c in notebook()["cells"] if not c["id"].startswith("dimer-detection-workshop-uv")]
+    numbered = [i for i in ids if re.fullmatch(r"dimer-detection-workshop-\d\d", i)]
     assert numbered == [f"dimer-detection-workshop-{i:02d}" for i in range(len(CELLS))]
+    # The DET2 review cells sit right after the cell they extend, under suffixed ids.
+    inserted = [i for i in ids if i not in numbered]
+    assert inserted == [f"dimer-detection-workshop-{c['after']:02d}{c['suffix']}" for c in INSERTED_CELLS]
+    for cell_id in inserted:
+        assert ids.index(cell_id) > ids.index(cell_id[:-1])
 
 
 def test_lock_has_hashes_for_every_package():

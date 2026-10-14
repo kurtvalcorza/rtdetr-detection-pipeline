@@ -14,7 +14,7 @@ import argparse
 import json
 from pathlib import Path
 
-from detection_workshop_source import CELLS
+from detection_workshop_source import CELLS, INSERTED_CELLS
 from detection_workshop_uv import LINE_LIMIT, LOCK_PATH, lock_sha256, lock_text, split_long_lines, uv_cells
 
 NOTEBOOK_NAME = "DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb"
@@ -22,7 +22,15 @@ UV_INSERT_AT = 2  # after the title and the learning goals, before "## 1. Notebo
 
 
 def ordered_cells():
-    numbered = [{**cell, "id": f"dimer-detection-workshop-{index:02d}"} for index, cell in enumerate(CELLS)]
+    numbered = []
+    for index, cell in enumerate(CELLS):
+        numbered.append({**cell, "id": f"dimer-detection-workshop-{index:02d}"})
+        # DET2 review cells go after CELLS[after] with a suffixed id, so existing indices and ids are unchanged.
+        for extra in INSERTED_CELLS:
+            if extra["after"] == index:
+                body = {k: v for k, v in extra.items() if k not in ("after", "suffix")}
+                numbered.append({**body, "id": f"dimer-detection-workshop-{index:02d}{extra['suffix']}"})
+    assert all(extra["after"] >= UV_INSERT_AT for extra in INSERTED_CELLS)
     return numbered[:UV_INSERT_AT] + uv_cells() + numbered[UV_INSERT_AT:]
 
 
@@ -55,9 +63,10 @@ def build_notebook():
                 "credentials_required": False,
                 "dataset": "60 deterministic 640x640 three-class synthetic traffic-sign scenes",
                 "default_tier": "STANDARD",
+                "notebook_kind": "WORKSHOP",
                 "notebook_mode": "WORKSHOP",
                 "notebook_profile": "E2E",
-                "notebook_spec": "2.1",
+                "notebook_spec": "2.5",
                 "release_status": "candidate",
                 "standalone": True,
                 "worker_required": False,
@@ -89,11 +98,19 @@ def build_notebook():
                         "change": "uv isolated environment: no kernel install and no restart guard; a hash-locked CPython 3.12.12 venv and a persistent worker that runs every later cell; carried literals split into pieces of at most 1,000 characters; Linux x86_64 only",
                         "fixes_kept": ["DET-01", "DET-02", "DET-03", "DET-04", "DET-05", "DET-06", "DET-07"],
                     },
+                    {
+                        "revision": "0.3.0-candidate",
+                        "date": "2026-10-14",
+                        "base_commit": "00130c323bb10c7faf3abe7e41618d105f4977cf",
+                        "base_notebook_blob": "929be36ca61620e7e33cd8dace8fcf4ba03ed09d",
+                        "change": "DET2 review fixes: per-model validation operating points for the size/density diagnostics, class-confusion tables, run-to-run variation disclosed with an optional FULL multi-seed repeat, whole-system framing with recipe budgets disclosed, re-initialised heads named with a display-only class-agnostic pre-adaptation AP, BYOD refusals caught and named, NOTEBOOK_SPEC 2.5 and notebook_kind",
+                        "fixes": ["DET2-M1", "DET2-M2", "DET2-M3", "DET2-M4", "DET2-M5", "DET2-m1", "DET2-m2", "DET2-m3", "DET2-m4", "DET2-m5", "DET2-m6"],
+                    },
                 ],
             },
             "kernelspec": {"display_name": "Python 3", "name": "python3"},
             "language_info": {"name": "python"},
-            "workshop_revision": "0.2.0-candidate",
+            "workshop_revision": "0.3.0-candidate",
         },
         "nbformat": 4,
         "nbformat_minor": 5,
@@ -115,7 +132,7 @@ def main():
             raise SystemExit(f"STALE: {out}; regenerate the workshop notebook")
         print(f"OK: {out}")
         return 0
-    out.write_text(content, encoding="utf-8")
+    out.write_bytes(content.encode("utf-8"))  # LF on every host
     print(out)
     return 0
 
