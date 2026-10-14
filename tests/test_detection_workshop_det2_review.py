@@ -73,9 +73,26 @@ def test_size_density_table_keeps_shared_threshold_and_adds_per_model_operating_
     assert (shared[shared["model"] == "rtdetr"]["recall50"].fillna(0) == 0).all()
     rt = own[own["model"] == "rtdetr"]
     assert (rt["operating_point"] == 0.20).all() and (rt["recall50"].dropna() == 1.0).all()
-    density = own[own["dimension"] == "scene_density"]
-    assert density["ap50_threshold_free"].notna().all()
-    assert (ns["OUTPUT_ROOT"] / "test" / "size_density_operating_point_metrics.csv").is_file()
+    assert (rt["hits"] == rt["objects"]).all() and (rt["images"] > 0).all()
+    density = own[own["dimension"] == "objects_per_scene"]
+    assert density["ap50_over_retained_predictions"].notna().all()
+    assert set(density["directly_comparable"]) <= {"yes", "no: classes missing from the AP mean"}
+    assert not any("threshold_free" in c for c in own.columns)
+    comp = ns["group_composition"]
+    names = ns["CLASS_NAMES"]
+    assert (comp[[f"n_{n}" for n in names]].sum(axis=1) == comp["objects"]).all()
+    assert comp[comp["dimension"] == "size"]["objects"].sum() == sum(len(r["boxes"]) for r in records)
+    for f in ("size_density_operating_point_metrics.csv", "size_density_group_composition.csv"):
+        assert (ns["OUTPUT_ROOT"] / "test" / f).is_file()
+
+
+def test_generator_geometry_confounds_size_with_class(notebook):
+    """Codex peer-review claim, checked on the generated 60 scenes: only stop signs reach the 0.040 'large' cutoff."""
+    ns = notebook
+    area = {n: [(b[2] - b[0]) * (b[3] - b[1]) / (640 * 640) for r in ns["all_records"]
+                for b, lab in zip(r["boxes"], r["labels"], strict=True) if lab == n] for n in ns["CLASS_NAMES"]}
+    assert max(area["yield-sign"]) < 0.040 and max(area["speed-limit-sign"]) < 0.040
+    assert max(area["speed-limit-sign"]) < 0.025
 
 
 # ---------------------------------------------------------------- DET2-M5: class confusion
@@ -96,7 +113,8 @@ def test_confusion_table_counts_cross_class_errors_misses_and_false_detections(n
     table = pd.read_csv(ns["OUTPUT_ROOT"] / "test" / "class_confusion.csv")
     r = table[table["model"] == "rtdetr"].set_index(["reference", "predicted"])["count"]
     assert r[(original, wrong)] == 1
-    assert sum(r[("no object", c)] for c in ns["CLASS_NAMES"]) == 1
+    assert sum(r[("unmatched detection", c)] for c in ns["CLASS_NAMES"]) == 1
+    assert "no object" not in set(table["reference"])
     assert sum(r[(c, "missed")] for c in ns["CLASS_NAMES"]) == 1
     y = table[table["model"] == "yolox_s"]
     off = y[(y["reference"] != y["predicted"]) & y["reference"].isin(ns["CLASS_NAMES"]) & y["predicted"].isin(ns["CLASS_NAMES"])]
@@ -128,11 +146,21 @@ class SeedAdapter(Adapter):
         return {}
 
 
-def multi_seed_ns(ns, tier):
+def multi_seed_ns(ns, tier, change=None):
+    def recipe(prefix):
+        return {"epochs": ns[f"{prefix}_EPOCHS"], "batch_size": ns[f"{prefix}_BATCH_SIZE"],
+                "learning_rate": ns[f"{prefix}_LEARNING_RATE"]}
     ns.update(WORKSHOP_TIER=tier, RTDETRWorkshop=SeedAdapter, YOLOXWorkshop=SeedAdapter, TEST_SCORE_CUTOFF=0.01,
               train_records=ns["validation_records"],
+              verified_freeze={
+                  "experiment_id": "synthetic",
+                  "multi_seed_repeat": {"enabled": tier == "FULL", "seeds": [1, 2, 3], "models": ["rtdetr", "yolox_s"]},
+                  "models": {"rtdetr": {"adaptation": recipe("RTDETR")}, "yolox_s": {"adaptation": recipe("YOLOX")}},
+              },
               test_table=pd.DataFrame([{"model": "rtdetr", "state": "adapted", "ap": 0.9},
                                        {"model": "yolox_s", "state": "adapted", "ap": 0.8}]))
+    if change:
+        change(ns)
     SeedAdapter.seeds.clear()
     Adapter.calls.clear()
     run_inserted(39, "b", ns)
@@ -152,6 +180,19 @@ def test_multi_seed_repeat_reports_every_seed_for_both_models_in_full(notebook):
     assert len(ns["multi_seed"]) == 6
     assert {"mean", "min", "max"} <= {c[1] for c in ns["multi_seed_summary"].columns}
     assert (ns["OUTPUT_ROOT"] / "test" / "multi_seed_repeat.csv").is_file()
+    protocol = json.loads((ns["OUTPUT_ROOT"] / "test" / "multi_seed_protocol.json").read_text())
+    assert protocol["protocol"]["seeds"] == [1, 2, 3] and "not a confidence interval" in protocol["interpretation"]
+
+
+@pytest.mark.parametrize("change", [
+    lambda ns: ns.update(MULTI_SEED_SEEDS=(4, 5, 6)),
+    lambda ns: ns.update(RTDETR_EPOCHS=9),
+    lambda ns: ns.update(WORKSHOP_TIER="STANDARD"),
+], ids=["seeds", "recipe", "tier"])
+def test_multi_seed_repeat_refuses_settings_changed_after_the_freeze(notebook, change):
+    with pytest.raises(RuntimeError, match="frozen"):
+        multi_seed_ns(notebook, "FULL", change)
+    assert SeedAdapter.seeds == []
 
 
 # ---------------------------------------------------------------- DET2-m1: BYOD refusal
@@ -175,9 +216,28 @@ def test_byod_refusal_prints_one_named_message_without_raising(notebook, tmp_pat
     byod_ready(notebook, tmp_path, make(tmp_path))
     run(47, notebook)
     lines = [line for line in capsys.readouterr().out.splitlines() if line.strip()]
-    assert len(lines) == 1 and lines[0].startswith("BYOD refused before any model was loaded")
+    assert len(lines) == 1 and lines[0].startswith("BYOD refused before any BYOD model was loaded")
     assert re.search(expected, lines[0]), lines[0]
     assert notebook["byod_records"] is None and "byod_metrics" not in notebook
+    assert notebook["BYOD_STATUS"] == "refused" and re.search(expected, notebook["BYOD_REFUSAL_REASON"])
+
+
+def test_refused_byod_is_recorded_in_manifest_and_summary(notebook, tmp_path, capsys):
+    ns = det1.complete(notebook)  # canonical path through provenance with synthetic adapters
+    byod_ready(ns, tmp_path, byod_zip(tmp_path, "image_id,file,label,x0,y0,x1,y1", ["0,0.png,cat,1,1,10,10"]))
+    run(47, ns)
+    run(52, ns)
+    manifest = json.loads((ns["OUTPUT_ROOT"] / "provenance" / "experiment_manifest.json").read_text())
+    assert manifest["byod"]["status"] == "refused" and "Unsupported class" in manifest["byod"]["refusal_reason"]
+    capsys.readouterr()
+    run(55, ns)
+    assert "BYOD was requested but REFUSED" in capsys.readouterr().out
+
+
+def test_disabled_byod_is_recorded(notebook):
+    notebook["USE_BYOD"] = False
+    run(47, notebook)
+    assert notebook["BYOD_STATUS"] == "disabled"
 
 
 def test_every_load_byod_refusal_names_its_item():
@@ -196,6 +256,10 @@ def test_static_wording_and_records():
     assert "transfer differently" not in CELLS[0]["source"]
     assert "not tuned on validation" in markdown and "27" in CELLS[24]["source"] and "108" in CELLS[24]["source"]
     assert "+0.143" in CELLS[37]["source"] and "+0.037" in CELLS[37]["source"]
+    everything = "\n".join(c["source"] for c in CELLS + INSERTED_CELLS)
+    for phrase in ("calibrated probability would", "threshold_free", "threshold-free AP50", "nothing else runs",
+                   "before any model was loaded", "small or crowded", '"no object"', "fails on small"):
+        assert phrase not in everything, phrase
     assert "172 MB" in CELLS[0]["source"]
     for i in (30, 52, 55):
         assert '"notebook_spec":"2.5"' in CELLS[i]["source"]
