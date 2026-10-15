@@ -364,6 +364,7 @@ def frozen(ns):
     ns["pre_val_table"] = pd.DataFrame([{"model": k, "ap": 0.0} for k in ns["MODEL_KEYS"]])
     ns["post_val_table"] = ns["pre_val_table"].copy()
     ns["VALIDATION_SETTINGS"] = {"pre": ns["evaluation_settings"](), "post": ns["evaluation_settings"]()}
+    ns["VALIDATION_OPERATING_POINTS"] = {k: 0.3 for k in ns["MODEL_KEYS"]}
     run(30, ns)
     Adapter.calls.clear()
     return ns
@@ -390,8 +391,9 @@ def test_unchanged_freeze_scores_test_with_the_frozen_settings(notebook):
     lambda ns: ns.update(MODEL_KEYS=["rtdetr"]),
     lambda ns: (ns["OUTPUT_ROOT"] / "artifacts" / "rtdetr" / "adapter.pt").write_text('{"key": "tampered"}'),
     lambda ns: ns["freeze_path"].write_text(ns["freeze_path"].read_text().replace('"score_cutoff": 0.01', '"score_cutoff": 0.8')),
+    lambda ns: ns["VALIDATION_OPERATING_POINTS"].update(rtdetr=0.05),
 ], ids=["score_cutoff", "display_threshold", "nms", "max_detections", "class_order", "test_cohort",
-        "model_selection", "artifact_bytes", "edited_freeze_file"])
+        "model_selection", "artifact_bytes", "edited_freeze_file", "operating_points"])
 def test_changes_after_freeze_are_refused_before_any_test_inference(notebook, change):
     ns = frozen(notebook)
     change(ns)
