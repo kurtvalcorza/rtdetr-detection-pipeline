@@ -74,7 +74,7 @@ TEMPLATE = {
         "not exist in COCO (`stop-sign`, `yield-sign`, `speed-limit-sign`), initializes class classification biases to suppress "
         "background query flooding, measures a pre-adaptation baseline, runs a bounded fine-tune with the backbone frozen, scores "
         "the result against a held-out split with COCO-style average precision (AP@[.50:.95] and AP50), runs the adapted model on "
-        "three unseen images, exports the weights as a standalone `.pt` artifact, and reloads that artifact from disk to check that "
+        "three unseen images, exports the weights as a standalone safetensors artifact with a JSON sidecar, and reloads that artifact from disk to check that "
         "its raw outputs match the in-memory model within a stated tolerance. Every number you see is measured locally in this notebook "
         "runtime.\n\n"
         "**Read the adaptation result honestly.** The baseline is a freshly re-headed model, so its average precision is zero by "
@@ -97,7 +97,7 @@ TEMPLATE = {
         "(the default freezes the ResNet backbone to prevent destroying pretrained features); video tracking; and instance segmentation."
     ),
     "guided": {"opening": [(
-        "**Who this notebook is for.** A learner who knows basic Python, has used Colab or Jupyter and has met bounding boxes, and wants to see two things in one run: what a pretrained real-time detector does on a scene it was not drawn for, and what a bounded fine-tune changes when the detector is re-headed onto three classes COCO does not have. The audience is students and practitioners deciding whether a detector can be adapted to their own labelled images; no prior experience with RT-DETR, transformers or average precision is assumed — each term is explained where it first matters and again in the **Glossary**. CPU is enough (the fine-tune took 80–140 s in local CPU checks); a GPU makes it seconds (about 11 s on a Tesla T4 in a recorded hosted run).\n\n**Input → Model → Output.**\n\n| | |\n|---|---|\n| Input | images resized to 640 × 640, with a caller-owned score threshold; the default is a drawn 640 × 480 street scene with four reference boxes, then a 40-image drawn traffic-sign dataset over `stop-sign`, `yield-sign`, `speed-limit-sign` |\n| Model | RT-DETR R50-VD: a ResNet-50-vd backbone, a hybrid encoder and a 6-layer transformer decoder with 300 object queries emitting boxes and per-class sigmoid scores without NMS; for adaptation, the classification heads are re-initialised for the three sign classes and the backbone is frozen (19.3 M of 42.7 M parameters train) |\n| Output | COCO detections and `box_iou` against the drawn references, two degenerate-input probes, a pre-adaptation baseline and a post-adaptation AP / AP50 / AP75 on a held-out split, detections on three unseen images, a reloadable `.pt` adapter whose detections are checked against the in-memory model, and six machine-readable outputs |\n\n**How to use this notebook.** Choose any runtime, then **Runtime → Run all**. Run all completes in one pass: Section 1 installs nothing into the notebook's own Python, so no restart is needed (the recorded hosted run of the previous version needed one; this version removes it). Sections 1–3 are **infrastructure** — the isolated environment, the carried modules and the verified snapshot — and their cells are collapsed; you may run them without studying them. The learning path starts in Section 4. Form fields (`# @param`) are the only values meant to be edited, and the defaults reproduce the recorded run. Before each principal result the notebook asks you to **Predict**; after it comes a **What to notice** note and a collapsible **Check your reasoning** with a worked answer. The worked answers quote a local CPU run of this revision (9 October 2026, the pinned checkpoint, `torch` 2.13 CPU); a GPU runtime gives the same picture with numbers that differ from the third decimal on — read your own output first. **Troubleshooting**, a **Glossary** and a **Conclusion** template are at the end. Budget about ten minutes on a GPU runtime, longer on CPU.\n\n**Roadmap:** 1–3 infrastructure → 4 the pretrained detector on a drawn scene, with one honest miss *(core concept: sigmoid scores under a caller-owned threshold, no NMS)* → 5 blank and noise probes *(evaluation practice: a detector should find nothing where there is nothing)* → 6 a labelled dataset over a new vocabulary and its validation *(core concept: the data contract)* → 7 split, re-head and the pre-adaptation baseline *(core concept: prior-probability bias initialisation)* → 8 the bounded fine-tune with the backbone frozen, always from the pretrained model *(core concept: what 45 % of the parameters can learn in three epochs)* → 9 held-out AP, AP50 and AP75 next to a zero-training reference *(evaluation practice: a baseline that is zero by construction says nothing about how hard the task is)* → 10 unseen images → 11 export, reload and parity *(engineering)* → 12 outputs and provenance → 13 optional BYOD → conclude."
+        "**Who this notebook is for.** A learner who knows basic Python, has used Colab or Jupyter and has met bounding boxes, and wants to see two things in one run: what a pretrained real-time detector does on a scene it was not drawn for, and what a bounded fine-tune changes when the detector is re-headed onto three classes COCO does not have. The audience is students and practitioners deciding whether a detector can be adapted to their own labelled images; no prior experience with RT-DETR, transformers or average precision is assumed — each term is explained where it first matters and again in the **Glossary**. CPU is enough (the fine-tune took 80–140 s in local CPU checks); a GPU makes it seconds (about 11 s on a Tesla T4 in a recorded hosted run).\n\n**Input → Model → Output.**\n\n| | |\n|---|---|\n| Input | images resized to 640 × 640, with a caller-owned score threshold; the default is a drawn 640 × 480 street scene with four reference boxes, then a 40-image drawn traffic-sign dataset over `stop-sign`, `yield-sign`, `speed-limit-sign` |\n| Model | RT-DETR R50-VD: a ResNet-50-vd backbone, a hybrid encoder and a 6-layer transformer decoder with 300 object queries emitting boxes and per-class sigmoid scores without NMS; for adaptation, the classification heads are re-initialised for the three sign classes and the backbone is frozen (19.3 M of 42.7 M parameters train) |\n| Output | COCO detections and `box_iou` against the drawn references, two degenerate-input probes, a pre-adaptation baseline and a post-adaptation AP / AP50 / AP75 on a held-out split, detections on three unseen images, a reloadable safetensors adapter whose detections are checked against the in-memory model, and six machine-readable outputs |\n\n**How to use this notebook.** Choose any runtime, then **Runtime → Run all**. Run all completes in one pass: Section 1 installs nothing into the notebook's own Python, so no restart is needed (the recorded hosted run of the previous version needed one; this version removes it). Sections 1–3 are **infrastructure** — the isolated environment, the carried modules and the verified snapshot — and their cells are collapsed; you may run them without studying them. The learning path starts in Section 4. Form fields (`# @param`) are the only values meant to be edited, and the defaults reproduce the recorded run. Before each principal result the notebook asks you to **Predict**; after it comes a **What to notice** note and a collapsible **Check your reasoning** with a worked answer. The worked answers quote a local CPU run of this revision (9 October 2026, the pinned checkpoint, `torch` 2.13 CPU); a GPU runtime gives the same picture with numbers that differ from the third decimal on — read your own output first. **Troubleshooting**, a **Glossary** and a **Conclusion** template are at the end. Budget about ten minutes on a GPU runtime, longer on CPU.\n\n**Roadmap:** 1–3 infrastructure → 4 the pretrained detector on a drawn scene, with one honest miss *(core concept: sigmoid scores under a caller-owned threshold, no NMS)* → 5 blank and noise probes *(evaluation practice: a detector should find nothing where there is nothing)* → 6 a labelled dataset over a new vocabulary and its validation *(core concept: the data contract)* → 7 split, re-head and the pre-adaptation baseline *(core concept: prior-probability bias initialisation)* → 8 the bounded fine-tune with the backbone frozen, always from the pretrained model *(core concept: what 45 % of the parameters can learn in three epochs)* → 9 held-out AP, AP50 and AP75 next to a zero-training reference *(evaluation practice: a baseline that is zero by construction says nothing about how hard the task is)* → 10 unseen images → 11 export, reload and parity *(engineering)* → 12 outputs and provenance → 13 optional BYOD → conclude."
     )]},
     "prerequisites": [
         "- **Learner:** basic Python and Colab or Jupyter familiarity; no prior experience with RT-DETR or detection fine-tuning. Object queries, sigmoid scores, IoU, AP, re-heading and reload parity are explained where they are first used and again in the Glossary.",
@@ -417,7 +417,7 @@ TEMPLATE = {
         {
             "md": (
                 "## 11. Artifact export, fresh reload, and boundary verification\n\n"
-                "We export the fine-tuned adapter weights, with the training settings that produced them, to `outputs/rtdetr_adapter.pt`. To meet "
+                "We export the fine-tuned adapter weights, with the training settings that produced them, to `outputs/rtdetr_adapter.safetensors` (tensors only, no pickle) with its provenance in the plain-JSON sidecar `outputs/rtdetr_adapter.json`, which records the weights' SHA-256 that the reload checks first. To meet "
                 "NOTEBOOK_SPEC §18 (VER1–VER5), we reload the artifact into a fresh pipeline and compare its **raw outputs before any threshold** — "
                 "the class logits and the boxes of all 300 queries — with the in-memory model on the 10 held-out and 3 unseen images. The check "
                 "passes when the largest absolute difference is within `PARITY_TOLERANCE` and the compared images hold at least one detection at "
@@ -425,7 +425,7 @@ TEMPLATE = {
                 "**Predict:** will the largest difference be exactly 0, below 1e-3, or larger?"
             ),
             "code": (
-                "artifact_path = OUTPUTS / 'rtdetr_adapter.pt'\n"
+                "artifact_path = OUTPUTS / 'rtdetr_adapter.safetensors'\n"
                 "descriptor = adapter.save_artifact(artifact_path, notes='RT-DETR R50-VD sign adaptation tutorial artifact', training=run)\n"
                 "print('Exported artifact descriptor:', json.dumps(descriptor, indent=2))\n\n"
                 "reloaded = RTDetrDetectionPipeline.load_artifact(artifact_path, weights_dir=WEIGHTS_DIR)\n"
@@ -464,7 +464,7 @@ TEMPLATE = {
                 "- `outputs/rtdetr_detection_annotated.png`\n"
                 "- `outputs/rtdetr_detection_new_data.csv` — one row per adapted detection on the unseen images, with its image, label, score, box and the IoU of the best same-label reference\n"
                 "- `outputs/rtdetr_detection_new_data_annotated.png` — the adapted model's detections on the unseen images\n"
-                "- `outputs/rtdetr_adapter.pt`\n\n"
+                "- `outputs/rtdetr_adapter.safetensors` and its sidecar `outputs/rtdetr_adapter.json`\n\n"
                 "`result.json` also records the training settings (learning rate, batch size, seed, freeze state, epoch losses, time), the degenerate-probe counts, the zero-training reference and the reload-parity numbers."
             ),
             "code": (
@@ -548,7 +548,7 @@ TEMPLATE = {
                 "or set `BYOD_CLASS_NAMES` to a comma-separated list to fix it (then every label must be in that list). Limits: at most 500 images, "
                 "100 boxes per image and 1000 classes; every image needs at least one box; no image twice; and after the split (`HOLDOUT` from "
                 "Section 7) both the train and held-out parts must contain every class — in practice at least four images per class. Each refusal "
-                "names the row, file or record and the rule. Results go to `outputs/byod_result.json` and `outputs/byod_adapter.pt`."
+                "names the row, file or record and the rule. Results go to `outputs/byod_result.json` and `outputs/byod_adapter.safetensors` with its sidecar `outputs/byod_adapter.json`."
             ),
             "code": (
                 'USE_BYOD_IMAGE = False  # @param {{type:"boolean"}}\n'
@@ -613,8 +613,8 @@ TEMPLATE = {
                 "    byod_adapted = byod_pipe.evaluate(byod_held)\n"
                 "    for key in ('ap', 'ap50', 'ap75'):\n"
                 "        print(f\"BYOD {{key:<5s}} baseline {{byod_baseline[key]:.4f}}  adapted {{byod_adapted[key]:.4f}}\")\n"
-                "    byod_descriptor = byod_pipe.save_artifact(OUTPUTS / 'byod_adapter.pt', notes='BYOD adaptation artifact', training=byod_run)\n"
-                "    byod_reloaded = RTDetrDetectionPipeline.load_artifact(OUTPUTS / 'byod_adapter.pt', weights_dir=WEIGHTS_DIR)\n"
+                "    byod_descriptor = byod_pipe.save_artifact(OUTPUTS / 'byod_adapter.safetensors', notes='BYOD adaptation artifact', training=byod_run)\n"
+                "    byod_reloaded = RTDetrDetectionPipeline.load_artifact(OUTPUTS / 'byod_adapter.safetensors', weights_dir=WEIGHTS_DIR)\n"
                 "    byod_images = [r['image'] for r in byod_held]\n"
                 "    byod_live, byod_fresh = byod_pipe.raw_outputs(byod_images), byod_reloaded.raw_outputs(byod_images)\n"
                 "    byod_max_diff = max(float(np.abs(a[k] - b[k]).max()) for a, b in zip(byod_live, byod_fresh, strict=True) for k in ('logits', 'pred_boxes'))\n"
@@ -625,7 +625,7 @@ TEMPLATE = {
                 "                   'split': {{'train': len(byod_train), 'held_out': len(byod_held)}}, 'training': byod_run,\n"
                 "                   'baseline': byod_baseline, 'adapted': byod_adapted, 'reload_max_abs_difference': byod_max_diff,\n"
                 "                   'artifact': byod_descriptor}}, f, indent=2, default=str)\n"
-                "    print('Written outputs/byod_result.json and outputs/byod_adapter.pt')\n"
+                "    print('Written outputs/byod_result.json, outputs/byod_adapter.safetensors and outputs/byod_adapter.json')\n"
                 "else:\n"
                 "    print('BYOD dataset branch is off; set USE_BYOD_DATASET = True to adapt on custom labelled datasets.')"
             ),
@@ -686,7 +686,7 @@ TEMPLATE = {
         '- **Frozen backbone** — the ResNet-50-vd weights are not updated; 19.3 M of 42.7 M parameters (45.1 %) train.\n'
         "- **Varifocal + L1 + GIoU loss** — RT-DETR's native training objective: a focal-style classification loss weighted by IoU, plus box-coordinate and generalised-IoU terms, summed over the six decoder layers.\n"
         '- **Held-out split** — the 25 % of images (10 of 40) never shown to the optimiser; AP is measured there.\n'
-        '- **Reload parity** — the `.pt` adapter written to disk, loaded into a fresh pipeline, reproduces the in-memory model\'s raw outputs (logits and boxes of every query, before any threshold) within a stated tolerance (1e-3).\n'
+        '- **Reload parity** — the safetensors adapter written to disk, loaded into a fresh pipeline, reproduces the in-memory model\'s raw outputs (logits and boxes of every query, before any threshold) within a stated tolerance (1e-3).\n'
         '- **Zero-training reference** — a score obtained with no adaptation at all (here, the unadapted COCO detector on the stop signs); it shows what the adapted number must beat, which a zero-by-construction baseline cannot.\n'
         '- **Isolated environment** — the separate Python 3.12.12 environment Section 1 builds from the hash lock; every later cell runs there.\n'
         '- **BYOD** — bring your own data: an image via `BYOD_IMAGE_PATH` or the Colab dialog, or a labelled dataset (folder or `.zip` with `annotations.csv`) via `BYOD_DATASET_PATH`.\n'

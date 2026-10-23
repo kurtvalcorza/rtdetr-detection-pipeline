@@ -103,8 +103,8 @@ Before changing the registry status from `Candidate` to `Release-grade`:
      split; the bounded fine-tune (Section 8 rebuilds the model from the snapshot first, prints
      `train_seconds`, and asserts the reported freeze state equals the model's `requires_grad` state);
      held-out AP / AP50 / AP75 next to the zero-training reference (the unadapted COCO detector on the
-     held-out stop signs); inference on the three seed-99 images; export of `outputs/rtdetr_adapter.pt`
-     with its training settings; fresh reload with raw-output parity (logits and boxes of every query on
+     held-out stop signs); inference on the three seed-99 images; export of `outputs/rtdetr_adapter.safetensors`
+     with its JSON sidecar `outputs/rtdetr_adapter.json` (training settings, weights SHA-256); fresh reload with raw-output parity (logits and boxes of every query on
      13 images within `PARITY_TOLERANCE`, at least one detection compared); and
      `outputs/rtdetr_detection_new_data.csv` / `outputs/rtdetr_detection_new_data_annotated.png`;
    - REL12 (separate runs): `USE_BYOD_DATASET = True` with `BYOD_DATASET_PATH` on a valid folder/zip

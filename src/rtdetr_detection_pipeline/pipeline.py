@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import math
+import os
 import time
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
@@ -29,7 +30,12 @@ MODEL_LICENSE = "apache-2.0"
 MODEL_KEY = "rtdetr-r50vd"
 DEFAULT_WEIGHTS_DIR = Path(__file__).resolve().parents[2] / "weights" / MODEL_KEY
 MANIFEST_NAME = "dimer-base-manifest.json"
-ARTIFACT_FORMAT = "rtdetr-adapter-v1"
+# Version 2 is the safetensors export: the weights are a `.safetensors` state dict (tensors only, no
+# pickle, nothing that runs code when it is read) and the metadata is a plain-JSON sidecar beside it.
+# Version 1 was a single `torch.save` pickle (`.pt`); it is no longer written or read.
+ARTIFACT_FORMAT = "rtdetr-adapter-v2"
+ARTIFACT_WEIGHTS_SUFFIX = ".safetensors"
+ARTIFACT_SIDECAR_SUFFIX = ".json"
 
 # The 80 COCO 2017 classes the checkpoint was trained on, in config.json id2label order (the
 # upstream spelling: "motorbike", "aeroplane", "sofa", "pottedplant", "tvmonitor", ...).
@@ -951,37 +957,80 @@ class RTDetrDetectionPipeline:
         notes: str | None = None,
         training: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Write adapted weights and provenance as one artifact; return its descriptor.
+        """Write the adapted weights as safetensors plus a plain-JSON sidecar; return the descriptor.
 
-        ``training`` (the ``finetune`` return value) is stored with the weights so the artifact
-        records how it was produced (learning rate, batch size, seed, freeze state, epoch losses).
+        ``path`` must end in ``.safetensors``. That file holds the state dict only, written with
+        ``safetensors.torch.save_file`` (tensors, no pickle, nothing that runs code when it is read)
+        and one metadata string, the format tag, so its bytes are reproducible: the same weights give
+        the same file in any process. The sidecar ``<name>.json`` beside it holds the provenance as
+        plain JSON (strings, numbers, booleans, lists, objects, null): the format tag, pinned
+        identity, model key, class vocabulary, adaptation state, the digest of the base weights, the
+        SHA-256 of the weights file (checked by ``load_artifact`` before it opens the weights), the
+        notes and ``training``, the ``finetune`` return value, so the artifact records how it was
+        produced (learning rate, batch size, seed, freeze state, epoch losses). A training value with
+        no JSON type is stored as its ``str()``. No ``.pt`` file is written.
         """
         import torch
-
-        training_record = json.loads(json.dumps(dict(training), default=str)) if training else None
+        from safetensors.torch import save_file
 
         artifact_path = Path(path)
+        if artifact_path.suffix != ARTIFACT_WEIGHTS_SUFFIX:
+            raise ValueError(
+                f"artifact path {artifact_path.name!r} must end in {ARTIFACT_WEIGHTS_SUFFIX}; "
+                "the adapter is exported as safetensors, never as a pickle"
+            )
+        sidecar_path = artifact_path.with_suffix(ARTIFACT_SIDECAR_SUFFIX)
+        training_record = json.loads(json.dumps(dict(training), default=str)) if training else None
+
+        state: dict[str, Any] = {}
+        for name, value in self.model.state_dict().items():
+            if not isinstance(value, torch.Tensor):
+                raise TypeError(
+                    f"state_dict entry {name!r} is a {type(value).__name__}, not a tensor; "
+                    "the safetensors artifact holds tensors only"
+                )
+            # save_file refuses tensors that share storage (RT-DETR ties its class and box heads to the
+            # decoder's) and needs contiguous ones, so every entry gets its own contiguous CPU copy;
+            # load_state_dict(strict=True) writes each key back, so the model keeps its own ties.
+            state[name] = value.detach().to("cpu").contiguous().clone()
+
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
+        # Sibling temporary files, then renames: an interrupted save never leaves a half-written
+        # artifact in place of the previous one. The weights land first, then the sidecar naming them.
+        partial = artifact_path.with_name(f"{artifact_path.name}.partial")
+        # One metadata key only: safetensors writes `__metadata__` keys in hash order, so a second key
+        # would make the bytes differ between processes. Everything else lives in the sidecar.
+        save_file(state, str(partial), metadata={"format": ARTIFACT_FORMAT})
+        weights_sha256 = _sha256(partial)
+        sidecar = {
             "format": ARTIFACT_FORMAT,
+            "weights_file": artifact_path.name,
+            "weights_sha256": weights_sha256,
             "model_id": MODEL_ID,
             "model_revision": MODEL_REVISION,
             "model_key": MODEL_KEY,
-            "class_names": list(self.class_names),
-            "adapted": self.adapted,
+            "class_names": [str(name) for name in self.class_names],
+            "adapted": bool(self.adapted),
             "base_state_digest": self.base_state_digest,
-            "notes": notes or "",
+            "notes": str(notes or ""),
             "training": training_record,
-            "state_dict": {k: v.detach().cpu() for k, v in self.model.state_dict().items()},
+            "tensors": len(state),
         }
-        torch.save(payload, artifact_path)
+        sidecar_partial = sidecar_path.with_name(f"{sidecar_path.name}.partial")
+        sidecar_partial.write_text(
+            json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        os.replace(partial, artifact_path)
+        os.replace(sidecar_partial, sidecar_path)
         return {
             "path": str(artifact_path),
             "bytes": artifact_path.stat().st_size,
-            "sha256": _sha256(artifact_path),
+            "sha256": weights_sha256,
+            "sidecar": str(sidecar_path),
+            "sidecar_sha256": _sha256(sidecar_path),
             "format": ARTIFACT_FORMAT,
             "class_names": list(self.class_names),
-            "tensors": len(payload["state_dict"]),
+            "tensors": len(state),
             "training": training_record,
             "base_state_digest": self.base_state_digest,
             "model_id": MODEL_ID,
@@ -996,11 +1045,32 @@ class RTDetrDetectionPipeline:
         weights_dir: str | Path | None = None,
         device: str | None = None,
     ) -> RTDetrDetectionPipeline:
-        """Rebuild an adapted pipeline from an exported artifact."""
-        import torch
+        """Rebuild an adapted pipeline from an exported artifact.
+
+        ``path`` is the ``.safetensors`` weights file; its metadata is the ``.json`` sidecar beside it.
+        The sidecar is read as plain JSON and every check runs before a tensor is read: the format
+        tag, the pinned model id and revision, the model key, and the SHA-256 of the weights file, so
+        a substituted, truncated or corrupted file is refused without being parsed. The weights are
+        then read with ``safetensors.torch.load_file`` (tensors only, no pickle) and applied with
+        ``load_state_dict(strict=True)``. ``rtdetr-adapter-v1`` ``.pt`` pickle artifacts are refused.
+        """
+        from safetensors.torch import load_file
 
         artifact_path = Path(path)
-        payload = torch.load(artifact_path, map_location="cpu", weights_only=True)
+        if artifact_path.suffix != ARTIFACT_WEIGHTS_SUFFIX:
+            raise ValueError(
+                f"artifact {artifact_path.name!r} is not a {ARTIFACT_WEIGHTS_SUFFIX} file; the "
+                f"{ARTIFACT_FORMAT} export is a safetensors state dict plus a JSON sidecar, and "
+                "pickle (.pt) artifacts are not read"
+            )
+        sidecar_path = artifact_path.with_suffix(ARTIFACT_SIDECAR_SUFFIX)
+        if not sidecar_path.is_file():
+            raise ValueError(
+                f"artifact sidecar {sidecar_path.name!r} is missing beside {artifact_path.name!r}"
+            )
+        payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError(f"artifact sidecar {sidecar_path.name!r} is not a JSON object")
         if payload.get("format") != ARTIFACT_FORMAT:
             raise ValueError(f"artifact format {payload.get('format')!r} != {ARTIFACT_FORMAT!r}")
         if payload.get("model_id") != MODEL_ID or payload.get("model_revision") != MODEL_REVISION:
@@ -1012,10 +1082,22 @@ class RTDetrDetectionPipeline:
             raise ValueError(
                 f"artifact was built on {payload.get('model_key')!r}, package pins {MODEL_KEY!r}"
             )
+        expected = payload.get("weights_sha256")
+        if not isinstance(expected, str) or len(expected) != 64:
+            raise ValueError(f"artifact sidecar {sidecar_path.name!r} records no weights_sha256")
+        actual = _sha256(artifact_path)
+        if actual != expected:
+            raise ValueError(
+                f"artifact weights digest mismatch for {artifact_path.name!r}: sidecar records "
+                f"{expected}, file has {actual}"
+            )
+        names = payload.get("class_names")
+        if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
+            raise ValueError(f"artifact sidecar {sidecar_path.name!r} records no class_names list")
 
-        names = tuple(payload["class_names"])
-        pipe = cls.from_pretrained(device=device, weights_dir=weights_dir, class_names=names)
-        pipe.model.load_state_dict(payload["state_dict"], strict=True)
+        state = load_file(str(artifact_path), device="cpu")
+        pipe = cls.from_pretrained(device=device, weights_dir=weights_dir, class_names=tuple(names))
+        pipe.model.load_state_dict(state, strict=True)
         pipe.adapted = True
         pipe.training = payload.get("training")
         pipe.source = f"artifact:{artifact_path.name}"
