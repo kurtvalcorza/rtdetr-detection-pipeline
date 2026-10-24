@@ -40,7 +40,8 @@ EXPECTED_OUTPUTS = (
     "rtdetr_detection_annotated.png",
     "rtdetr_detection_new_data.csv",
     "rtdetr_detection_new_data_annotated.png",
-    "rtdetr_adapter.pt",
+    "rtdetr_adapter.safetensors",
+    "rtdetr_adapter.json",
 )
 
 CODE_MARKERS = (
@@ -200,6 +201,7 @@ FORBIDDEN_PATTERNS = (
             r"|getattr\(\s*torch\s*,\s*['\"]load['\"]"
         ),
     ),
+    ("pickle artifact write (ARTIFACT_SPEC SER7)", re.compile(r"\btorch\.save\s*\(")),
     ("archive extractall", re.compile(r"\.extractall\s*\(")),
     ("notebook magic or shell escape", re.compile(r"(?m)^\s*[%!]|get_ipython\(\)")),
 )

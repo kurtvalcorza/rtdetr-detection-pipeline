@@ -40,7 +40,7 @@ def test_identity_constants():
     assert DEFAULT_WEIGHTS_DIR == REPO / "weights" / MODEL_KEY
     assert 0 < DETECTION_THRESHOLD < 1 and len(LABELS) == 80 and MAX_DETECTIONS == 300
     assert LABELS[0] == "person" and LABELS[11] == "stop sign" and LABELS[-1] == "toothbrush"
-    assert ARTIFACT_FORMAT == "rtdetr-adapter-v1"
+    assert ARTIFACT_FORMAT == "rtdetr-adapter-v2"
     manifest = REPO / "weights" / MODEL_KEY / "dimer-base-manifest.json"
     if manifest.is_file():
         data = json.loads(manifest.read_text(encoding="utf-8"))

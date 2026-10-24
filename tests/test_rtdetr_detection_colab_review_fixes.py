@@ -309,8 +309,8 @@ def test_rtd_m4_raw_outputs_and_training_record_round_trip(tmp_path):
     run = pipe.finetune(sign_dataset(4, seed=0), epochs=1, batch_size=2, seed=0)
     rows = pipe.raw_outputs([Image.new("RGB", (32, 32), (200, 0, 0))])
     assert set(rows[0]) == {"logits", "pred_boxes"} and rows[0]["logits"].shape == (1, 3)
-    descriptor = pipe.save_artifact(tmp_path / "a.pt", notes="t", training=run)
-    payload = torch.load(tmp_path / "a.pt", map_location="cpu", weights_only=True)
+    descriptor = pipe.save_artifact(tmp_path / "a.safetensors", notes="t", training=run)
+    payload = json.loads((tmp_path / "a.json").read_text(encoding="utf-8"))
     for key in ("learning_rate", "batch_size", "seed", "freeze_backbone", "epoch_losses", "train_seconds"):
         assert key in payload["training"] and key in descriptor["training"]
 
