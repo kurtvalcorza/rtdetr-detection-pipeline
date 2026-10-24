@@ -427,7 +427,9 @@ TEMPLATE = {
             "code": (
                 "artifact_path = OUTPUTS / 'rtdetr_adapter.safetensors'\n"
                 "descriptor = adapter.save_artifact(artifact_path, notes='RT-DETR R50-VD sign adaptation tutorial artifact', training=run)\n"
-                "print('Exported artifact descriptor:', json.dumps(descriptor, indent=2))\n\n"
+                "print('Exported artifact descriptor:', json.dumps(descriptor, indent=2))\n"
+                "sidecar_path = OUTPUTS / 'rtdetr_adapter.json'\n"
+                "assert sidecar_path.is_file(), 'the export must write its plain-JSON sidecar beside the weights'\n\n"
                 "reloaded = RTDetrDetectionPipeline.load_artifact(artifact_path, weights_dir=WEIGHTS_DIR)\n"
                 "print({{'reloaded_source': reloaded.source, 'adapted': reloaded.adapted, 'class_names': list(reloaded.class_names)}})\n\n"
                 "assert reloaded.training == descriptor['training'], 'the artifact must carry its training settings'\n\n"

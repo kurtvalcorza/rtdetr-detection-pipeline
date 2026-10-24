@@ -190,6 +190,8 @@ def test_missing_sidecar_is_refused(tmp_path, no_rebuild_no_pickle):
         ({"model_key": "rtdetr-r101vd"}, "package pins"),
         ({"weights_sha256": None}, "weights_sha256"),
         ({"class_names": "stop-sign"}, "class_names"),
+        ({"class_names": []}, "non-empty class_names"),
+        ({"weights_file": "other.safetensors"}, "names weights file"),
     ],
 )
 def test_sidecar_identity_mismatches_are_refused(tmp_path, no_rebuild_no_pickle, changes, message):
@@ -216,6 +218,22 @@ def test_truncated_weights_are_refused(tmp_path, no_rebuild_no_pickle):
     # Even with a sidecar rewritten to match, the safetensors reader rejects the short file itself.
     _rewrite_sidecar(path, weights_sha256=pipeline_module._sha256(path))
     with pytest.raises(Exception, match="(?i)incomplete|invalid|header|metadata|size"):
+        RTDetrDetectionPipeline.load_artifact(path)
+
+
+def test_header_format_tag_must_match(tmp_path, no_rebuild_no_pickle):
+    # A safetensors file whose own header names another format is refused even when the sidecar's
+    # digest has been rewritten to match it.
+    path, _ = _save(tmp_path)
+    raw = path.read_bytes()
+    header_len = struct.unpack("<Q", raw[:8])[0]
+    header = json.loads(raw[8 : 8 + header_len])
+    header["__metadata__"]["format"] = "other"
+    encoded = json.dumps(header, separators=(",", ":")).encode("utf-8")
+    assert len(encoded) <= header_len
+    path.write_bytes(raw[:8] + encoded + b" " * (header_len - len(encoded)) + raw[8 + header_len :])
+    _rewrite_sidecar(path, weights_sha256=pipeline_module._sha256(path))
+    with pytest.raises(ValueError, match="header does not carry format"):
         RTDetrDetectionPipeline.load_artifact(path)
 
 

@@ -41,6 +41,7 @@ EXPECTED_OUTPUTS = (
     "rtdetr_detection_new_data.csv",
     "rtdetr_detection_new_data_annotated.png",
     "rtdetr_adapter.safetensors",
+    "rtdetr_adapter.json",
 )
 
 CODE_MARKERS = (

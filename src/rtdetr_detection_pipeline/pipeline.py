@@ -1051,10 +1051,11 @@ class RTDetrDetectionPipeline:
         The sidecar is read as plain JSON and every check runs before a tensor is read: the format
         tag, the pinned model id and revision, the model key, and the SHA-256 of the weights file, so
         a substituted, truncated or corrupted file is refused without being parsed. The weights are
-        then read with ``safetensors.torch.load_file`` (tensors only, no pickle) and applied with
+        then parsed from the same bytes whose digest was checked, with ``safetensors.torch.load``
+        (tensors only, no pickle), and applied with
         ``load_state_dict(strict=True)``. ``rtdetr-adapter-v1`` ``.pt`` pickle artifacts are refused.
         """
-        from safetensors.torch import load_file
+        from safetensors.torch import load as load_safetensors
 
         artifact_path = Path(path)
         if artifact_path.suffix != ARTIFACT_WEIGHTS_SUFFIX:
@@ -1082,20 +1083,38 @@ class RTDetrDetectionPipeline:
             raise ValueError(
                 f"artifact was built on {payload.get('model_key')!r}, package pins {MODEL_KEY!r}"
             )
+        if payload.get("weights_file") != artifact_path.name:
+            raise ValueError(
+                f"artifact sidecar {sidecar_path.name!r} names weights file "
+                f"{payload.get('weights_file')!r}, not {artifact_path.name!r}"
+            )
         expected = payload.get("weights_sha256")
         if not isinstance(expected, str) or len(expected) != 64:
             raise ValueError(f"artifact sidecar {sidecar_path.name!r} records no weights_sha256")
-        actual = _sha256(artifact_path)
+        # Read the weights once: the bytes whose digest is checked are the bytes that are parsed.
+        raw = artifact_path.read_bytes()
+        actual = hashlib.sha256(raw).hexdigest()
         if actual != expected:
             raise ValueError(
                 f"artifact weights digest mismatch for {artifact_path.name!r}: sidecar records "
                 f"{expected}, file has {actual}"
             )
         names = payload.get("class_names")
-        if not isinstance(names, list) or not all(isinstance(name, str) for name in names):
-            raise ValueError(f"artifact sidecar {sidecar_path.name!r} records no class_names list")
+        if not isinstance(names, list) or not names or not all(isinstance(name, str) for name in names):
+            raise ValueError(
+                f"artifact sidecar {sidecar_path.name!r} records no non-empty class_names list"
+            )
+        header_len = int.from_bytes(raw[:8], "little")
+        try:
+            header = json.loads(raw[8 : 8 + header_len])
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ValueError(f"artifact {artifact_path.name!r} has no readable safetensors header") from exc
+        if (header.get("__metadata__") or {}).get("format") != ARTIFACT_FORMAT:
+            raise ValueError(
+                f"artifact {artifact_path.name!r} header does not carry format {ARTIFACT_FORMAT!r}"
+            )
 
-        state = load_file(str(artifact_path), device="cpu")
+        state = load_safetensors(raw)
         pipe = cls.from_pretrained(device=device, weights_dir=weights_dir, class_names=tuple(names))
         pipe.model.load_state_dict(state, strict=True)
         pipe.adapted = True
