@@ -177,7 +177,9 @@ def test_real_orchestrator_with_model_double(tmp_path):
             return {"epochs": kw["epochs"]}
 
         def save_artifact(self, path):
+            assert path.suffix == ".safetensors"
             path.write_bytes(b"adapted")
+            path.with_suffix(".json").write_text("{}")  # the wrappers write a sidecar beside the weights
             events.append("save")
             return {"bytes": 7}
 

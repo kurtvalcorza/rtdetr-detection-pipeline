@@ -272,4 +272,5 @@ def test_notebook_metadata_declares_spec_and_kind():
     nb = json.loads((Path(__file__).resolve().parents[1] / "tutorials" / "DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb").read_text(encoding="utf-8"))
     meta = nb["metadata"]["dimer"]
     assert meta["notebook_spec"] == "2.5" and meta["notebook_kind"] == "WORKSHOP"
-    assert meta["revisions"][-1]["base_notebook_blob"] == "929be36ca61620e7e33cd8dace8fcf4ba03ed09d"
+    det2 = next(r for r in meta["revisions"] if r["revision"] == "0.3.0-candidate")
+    assert det2["base_notebook_blob"] == "929be36ca61620e7e33cd8dace8fcf4ba03ed09d"
