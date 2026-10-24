@@ -84,9 +84,10 @@ def test_contract_present():
         '"stop-sign"', '"yield-sign"', '"speed-limit-sign"',
         "YOLOX_EVAL_NMS = 0.65",
         "frozen_experiment.json",
-        "rtdetr-adapter-v1",
-        "dimer-yolox-detection-adapter/1",
-        "weights_only=True",
+        "dimer-workshop-rtdetr-adapter/1",
+        "dimer-workshop-yolox-adapter/1",
+        "adapter.safetensors",
+        "weights_only=True",  # the digest-checked upstream YOLOX .pth checkpoint only
         "workshop_summary.json",
         "experiment_manifest.json",
     ]:

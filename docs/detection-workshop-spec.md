@@ -1324,16 +1324,23 @@ YOLOX-X SHOULD be loaded last.
 
 Preserve model-specific formats.
 
+Each adapter is written as `adapter.safetensors` (the state dict only, one `format` key in the
+safetensors header so the bytes are reproducible) plus a plain-JSON `adapter.json` sidecar
+(ARTIFACT_SPEC 2.0 SER7, SER10, SER11). Reload checks the sidecar's format tag and identity and the
+weights' SHA-256 before reading a tensor, then applies the state dict with `strict=True`. No adapter
+is written with `torch.save` or read with `torch.load`; `.pt` files are refused. The `dimer-workshop-`
+prefix keeps these workshop formats apart from the pipeline repositories' own artifact formats.
+
 ### RT-DETR
 
 ```text id="d0va54"
-rtdetr-adapter-v1
+dimer-workshop-rtdetr-adapter/1
 ```
 
 ### YOLOX
 
 ```text id="mh45ds"
-dimer-yolox-detection-adapter/1
+dimer-workshop-yolox-adapter/1
 ```
 
 Artifacts MUST record:

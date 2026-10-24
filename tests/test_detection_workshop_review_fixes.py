@@ -24,7 +24,7 @@ import pytest
 from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from detection_workshop_source import CELLS
+from detection_workshop_source import CELLS, INSERTED_CELLS
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("torchvision")
@@ -35,6 +35,12 @@ GOOD = {"box": [10.0, 10.0, 30.0, 30.0], "label": "stop-sign", "score": 0.9}
 
 def run(i, ns):
     exec(compile(CELLS[i]["source"], f"cell-{i:02d}", "exec"), ns)
+
+
+def run_adapter_files_cell(ns):
+    """The inserted cell 19a: safetensors + JSON sidecar helpers the two wrappers call."""
+    cell = next(c for c in INSERTED_CELLS if (c["after"], c["suffix"]) == (19, "a"))
+    exec(compile(cell["source"], "cell-19a", "exec"), ns)
 
 
 def sha256_file(path):
@@ -70,6 +76,7 @@ def yolox(tmp_path_factory):
     module = compile(CELLS[14]["source"].split("empty_predictions=")[0], "cell-14", "exec")
     exec(module, ns)
     run(18, ns)
+    run_adapter_files_cell(ns)
     run(21, ns)
     return ns
 
@@ -131,15 +138,11 @@ def test_yolox_forward_equals_upstream_constructor_on_identical_weights(yolox):
         assert not torch.equal(expected, pytorch_default(pixels))
 
 
-def test_yolox_artifact_from_before_the_batchnorm_fix_is_refused(yolox, tmp_path):
-    path = tmp_path / "adapter.pt"
-    torch.save({"format": "dimer-yolox-detection-adapter/1", "variant": "yolox_s", "base_sha256": "0" * 64,
-                "class_names": list(CLASSES), "state_dict": {}}, path)
-    with pytest.raises(ValueError, match="BatchNorm"):
-        yolox["YOLOXWorkshop"].load_artifact(path)
-    torch.save({"format": "dimer-yolox-detection-adapter/2", "variant": "yolox_s", "base_sha256": "0" * 64,
-                "architecture": {"batchnorm": {"eps": 1e-5, "momentum": 0.1}},
-                "class_names": list(CLASSES), "state_dict": {}}, path)
+def test_yolox_artifact_with_pytorch_default_batchnorm_is_refused(yolox, tmp_path):
+    path = tmp_path / "adapter.safetensors"
+    identity = {"variant": "yolox_s", "release": "0.1.1rc0", "upstream_code_revision": yolox["YOLOX_CODE_REVISION"],
+                "base_sha256": "0" * 64, "architecture": {"batchnorm": {"eps": 1e-5, "momentum": 0.1}}}
+    yolox["save_adapter_files"](path, {"w": torch.zeros(2)}, yolox["WORKSHOP_ADAPTER_FORMATS"]["yolox"], identity, CLASSES, True)
     with pytest.raises(ValueError, match="BatchNorm"):
         yolox["YOLOXWorkshop"].load_artifact(path)
 
@@ -201,6 +204,7 @@ def rtdetr():
     ns.update(CLASS_NAMES=CLASSES, EVAL_SCORE_THRESHOLD=0.01, MAX_EVAL_DETECTIONS=100, RTDETR_ROOT=Path("."), IOU_THRESHOLDS=(0.5,),
               RTDETR_SPEC={"model_id": "x", "revision": "y"}, YOLOX_EVAL_NMS=0.65)
     exec(compile(CELLS[14]["source"].split("empty_predictions=")[0], "cell-14", "exec"), ns)
+    run_adapter_files_cell(ns)
     run(20, ns)
     ns["processor"] = RTDetrImageProcessor()
     return ns
@@ -338,7 +342,7 @@ class Adapter:
 
     @classmethod
     def load_artifact(cls, path, device):
-        return cls(json.loads(Path(path).read_text())["key"], True)
+        return cls(json.loads(Path(path).with_suffix(".json").read_text())["key"], True)
 
     def predict_many(self, records, threshold=0.01):
         Adapter.calls.append(threshold)
@@ -351,8 +355,10 @@ class Adapter:
     def save_artifact(self, path):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"key": self.key}))
-        return {"path": str(path), "bytes": path.stat().st_size, "sha256": sha256_file(path)}
+        path.write_bytes(b"synthetic weights placeholder; not a model")
+        path.with_suffix(".json").write_text(json.dumps({"key": self.key}))
+        return {"path": str(path), "bytes": path.stat().st_size, "sha256": sha256_file(path),
+                "sidecar_sha256": sha256_file(path.with_suffix(".json"))}
 
 
 def frozen(ns):
@@ -360,7 +366,7 @@ def frozen(ns):
     ns.update(RTDETRWorkshop=Adapter, YOLOXWorkshop=Adapter, YOLOX_CODE_REVISION="rev",
               YOLOX_BATCHNORM={"eps": 1e-3, "momentum": 0.03}, pipes={})
     ns["artifact_descriptors"] = {
-        k: Adapter(k, True).save_artifact(ns["OUTPUT_ROOT"] / "artifacts" / k / "adapter.pt") for k in ns["MODEL_KEYS"]}
+        k: Adapter(k, True).save_artifact(ns["OUTPUT_ROOT"] / "artifacts" / k / "adapter.safetensors") for k in ns["MODEL_KEYS"]}
     ns["pre_val_table"] = pd.DataFrame([{"model": k, "ap": 0.0} for k in ns["MODEL_KEYS"]])
     ns["post_val_table"] = ns["pre_val_table"].copy()
     ns["VALIDATION_SETTINGS"] = {"pre": ns["evaluation_settings"](), "post": ns["evaluation_settings"]()}
@@ -389,11 +395,12 @@ def test_unchanged_freeze_scores_test_with_the_frozen_settings(notebook):
     lambda ns: ns.update(CLASS_NAMES=tuple(reversed(CLASSES))),
     lambda ns: ns.update(test_records=ns["validation_records"]),
     lambda ns: ns.update(MODEL_KEYS=["rtdetr"]),
-    lambda ns: (ns["OUTPUT_ROOT"] / "artifacts" / "rtdetr" / "adapter.pt").write_text('{"key": "tampered"}'),
+    lambda ns: (ns["OUTPUT_ROOT"] / "artifacts" / "rtdetr" / "adapter.safetensors").write_bytes(b"tampered"),
+    lambda ns: (ns["OUTPUT_ROOT"] / "artifacts" / "rtdetr" / "adapter.json").write_text('{"key": "tampered"}'),
     lambda ns: ns["freeze_path"].write_text(ns["freeze_path"].read_text().replace('"score_cutoff": 0.01', '"score_cutoff": 0.8')),
     lambda ns: ns["VALIDATION_OPERATING_POINTS"].update(rtdetr=0.05),
 ], ids=["score_cutoff", "display_threshold", "nms", "max_detections", "class_order", "test_cohort",
-        "model_selection", "artifact_bytes", "edited_freeze_file", "operating_points"])
+        "model_selection", "artifact_bytes", "artifact_sidecar", "edited_freeze_file", "operating_points"])
 def test_changes_after_freeze_are_refused_before_any_test_inference(notebook, change):
     ns = frozen(notebook)
     change(ns)
@@ -525,7 +532,7 @@ def test_each_run_gets_its_own_directory(tmp_path, monkeypatch):
 
 
 def test_export_contains_only_this_run_and_replays_metrics(notebook):
-    stale = Path(notebook["OUTPUT_DIR"]) / "runs" / "older-full-run" / "artifacts" / "yolox_x" / "adapter.pt"
+    stale = Path(notebook["OUTPUT_DIR"]) / "runs" / "older-full-run" / "artifacts" / "yolox_x" / "adapter.safetensors"
     stale.parent.mkdir(parents=True)
     stale.write_text("stale earlier FULL-run marker; not a model")
     ns = complete(notebook)
