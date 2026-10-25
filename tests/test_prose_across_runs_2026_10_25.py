@@ -25,4 +25,4 @@ def test_every_hosted_ap_is_listed():
     md = _markdown()
     assert "0.9161 (Kaggle, `315909a9`" in md and "0.979 (`becde2c0`" in md
     assert "0.916 to 0.979 on hosted T4s" in md
-    assert "0.937–0.991 and 0.835–1.000 in the three Colab T4 runs" in md
+    assert "0.937–0.991 and 0.835–1.000 in the four Colab T4 runs" in md
