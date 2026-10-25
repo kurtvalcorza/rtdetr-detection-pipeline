@@ -2,9 +2,9 @@
 
 `tutorials/rtdetr_detection_colab.ipynb` (`E2E`, **standalone** carrier) is a
 **release candidate** until the exact notebook revision has executed top-to-bottom in a clean
-supported runtime. The current blob `0dd61e64a3cc` (commit `7456a3c`, the safetensors adapter export) executed top to bottom in one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-25 (Colab CLI sequential execution, not a browser Run all; 15/15 code cells in the exec log, 111.1 s wall; held-out AP 0.9344 / AP50 0.942 from baseline 0.000; `rtdetr_adapter.safetensors` plus its JSON sidecar reloaded with raw-output parity 0.0 on 13 images); status stays **Candidate**: the remaining gates are REL12 (hosted BYOD) and REL2 (a browser run of the interactive journeys). Runs of earlier blobs are history (REL14). Unit tests, JSON validation, code-cell compilation, the generator parity checks
+supported runtime. The current blob `700f4a30ef23` (tier C review fixes of 2026-10-25, generated at `0563816`) has **no hosted run yet** (REL14): it changes markdown, the use notice and `metadata.dimer` only, and its hosted Colab T4 run is pending. The previous blob `0dd61e64a3cc` (commit `7456a3c`) executed top to bottom in one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-25 (Colab CLI sequential execution, not a browser Run all; 15/15 code cells in the exec log, 111.1 s wall; held-out AP 0.9344 / AP50 0.942 from baseline 0.000; `rtdetr_adapter.safetensors` plus its JSON sidecar reloaded with raw-output parity 0.0 on 13 images); status stays **Candidate**: the remaining gates are REL12 (hosted BYOD) and REL2 (a browser run of the interactive journeys). Runs of earlier blobs are history (REL14). Unit tests, JSON validation, code-cell compilation, the generator parity checks
 and `tools/validate_release_assets.py` are necessary checks but are **not** runtime evidence under
-DIMER Notebook Specification 2.2. This file is the durable release-gate record for the notebook.
+DIMER Notebook Specification 2.5. This file is the durable release-gate record for the notebook.
 
 ## Automatic coverage (static, every pull request)
 
@@ -147,6 +147,8 @@ they are measurements for the stated runtime, not general estimates.
 ## Current status
 
 **Candidate.** On main at `7456a3c` (2026-10-25):
+
+- **Pending (this change):** `tutorials/rtdetr_detection_colab.ipynb` blob `700f4a30ef234ac8802769e52ff85c397685f644`, generated at `0563816` from the tier C review fixes (T77-1 worked-answer sources and softened claims, T77-2 DAT9 overlap statement, T77-3 spec 2.5 items). Status **Candidate**; its hosted Colab T4 run is pending, and the 2026-10-25 run below describes the previous blob `0dd61e64` (REL14). Static checks are not clean-runtime evidence.
 
 - `tutorials/rtdetr_detection_colab.ipynb`, blob `0dd61e64a3cc42f8896664d74bbd6a37473f7a17`: the default E2E path ran on a hosted Colab T4 (record below, 2026-10-25). The adapter is exported as `rtdetr_adapter.safetensors` plus `rtdetr_adapter.json` and reloaded from those files.
 - `tutorials/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, blob `6de85e6314e979856a71c0857e6af8a2b24b5e62` (revision `0.4.0-candidate`): the default STANDARD path ran on a hosted Colab T4 (record below, 2026-10-25). FULL (including the multi-seed repeat) has not run on this blob.
