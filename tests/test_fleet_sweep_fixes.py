@@ -200,8 +200,8 @@ RECORD = ROOT / "docs" / "release-verification.md"
 
 
 def test_swp_g_checkpoint_answers_quote_the_recorded_run():
-    """Every number in a Check-your-reasoning answer is in the recorded 2026-10-09 local CPU run of this revision
-    (release-verification local pre-flight table); the stale IoU range 0.91–0.97 is gone (RTD-m1)."""
+    """Every number in a Check-your-reasoning answer is in the recorded 2026-10-09 local CPU run of an earlier
+    revision or a labelled hosted T4 run (release-verification tables); the stale IoU range 0.91–0.97 is gone (RTD-m1)."""
     markdown = "\n".join(c["source"] for c in _nb(NB)["cells"] if c["cell_type"] == "markdown")
     checks = re.findall(r"<details><summary>Check your reasoning</summary>(.*?)</details>", markdown, re.S)
     assert len(checks) == 6
@@ -211,7 +211,7 @@ def test_swp_g_checkpoint_answers_quote_the_recorded_run():
         1: ("0.333", "0.391", "87", "254"),
         2: ("0.000",),
         3: ("39.62", "25.58", "19.30", "19,259,121", "42,733,137", "137"),
-        4: ("0.8494", "0.8535", "0.9161", "1.000"),
+        4: ("0.8494", "0.8535", "0.9452", "0.9344", "0.934", "1.000"),
         5: ("24 detections",),
     }
     for index, numbers in quoted.items():

@@ -101,9 +101,10 @@ TEMPLATE = {
     )]},
     "prerequisites": [
         "- **Learner:** basic Python and Colab or Jupyter familiarity; no prior experience with RT-DETR or detection fine-tuning. Object queries, sigmoid scores, IoU, AP, re-heading and reload parity are explained where they are first used and again in the Glossary.",
-        "- **Runtime:** a fresh supported **Linux x86_64** runtime (Google Colab, Kaggle or a Linux Jupyter server). Section 1 builds its own Python 3.12.12 environment from a hash-locked list of manylinux wheels, so the Python version of the kernel itself does not matter and nothing is installed into it; a Windows or macOS kernel is not supported. CPU is the documented default and CUDA GPU is used automatically when available. Estimated fine-tune time (Section 8 prints the measured `train_seconds`): 80–140 s on a laptop CPU (local checks, October 2026) and about 11 s on a Tesla T4 (recorded Kaggle run, 15 September 2026). Pinned `torch==2.14.0` and the 172 MB checkpoint are the primary downloads.",
+        "- **Runtime:** a fresh supported **Linux x86_64** runtime (Google Colab, Kaggle or a Linux Jupyter server). Section 1 builds its own Python 3.12.12 environment from a hash-locked list of manylinux wheels, so the Python version of the kernel itself does not matter and nothing is installed into it; a Windows or macOS kernel is not supported. CPU is the documented default and CUDA GPU is used automatically when available. Estimated fine-tune time (Section 8 prints the measured `train_seconds`): 80–140 s on a laptop CPU (local checks, October 2026) and about 12 s on a Tesla T4 (`train_seconds` 11.5 and 11.6 in the hosted Colab T4 runs of earlier blobs `e2ab4517` on 2026-10-09 and `0dd61e64` on 2026-10-25, recorded in `docs/release-verification.md`). Pinned `torch==2.14.0` and the 172 MB checkpoint are the primary downloads.",
+        "- **Worked answers:** the numbers inside the *Check your reasoning* boxes and the Interpretation quote one local CPU run of an earlier revision (2026-10-09, review branch `review/rtdetr_detection_colab-2026-10-02`, recorded in `docs/release-verification.md`); they were not re-run for this revision. Your printed output is the result. Sections 4–5 printed the same numbers on every runtime recorded so far; the training-dependent numbers in Sections 8–11 differ between runs, by up to about 0.1 AP between that CPU run and the hosted T4 runs.",
         "- **Knowledge:** basic Python and PIL; bounding box representation in xyxy pixel coordinates; intersection-over-union (IoU); and the interpretation of average precision (AP50 and AP@[.50:.95]).",
-        "- **Data:** everything is generated deterministically in code by `samples.py`, requiring zero external dataset download: one 640×480 COCO demonstration scene and a 40-image labelled sign adaptation dataset. Optional BYOD is gated off by default. Expected BYOD input: one PNG/JPEG/WebP image, or a labelled dataset as a folder or `.zip` holding `annotations.csv` (header `file,label,x0,y0,x1,y1`, one row per box, pixel coordinates) and the images it names — the full rules are in Section 13. Do not upload confidential or restricted data to a hosted notebook environment unless you are authorized to do so; uploaded inputs stay in this runtime and are not sent to any inference API.",
+        "- **Data:** everything is generated deterministically in code by `samples.py`, requiring zero external dataset download: one 640×480 COCO demonstration scene and a 40-image labelled sign adaptation dataset. **Overlap with the training data:** the checkpoint was trained on COCO 2017 (model card); every evaluation image here is drawn by `samples.py` when the notebook runs, so none of them can be in COCO or in any other training set. This is verified by construction (the images are generated in code), not by searching the training data. The demonstration scene does draw COCO classes (stop sign, traffic light, clock, sports ball), so the pretrained detector's success on it and on the held-out stop signs reflects classes it was trained on; only the yield and speed-limit signs are new to it. Optional BYOD is gated off by default. Expected BYOD input: one PNG/JPEG/WebP image, or a labelled dataset as a folder or `.zip` holding `annotations.csv` (header `file,label,x0,y0,x1,y1`, one row per box, pixel coordinates) and the images it names — the full rules are in Section 13. Do not upload confidential or restricted data to a hosted notebook environment unless you are authorized to do so; uploaded inputs stay in this runtime and are not sent to any inference API.",
     ],
     "run_all": (
         "Selecting **Run all** in a fresh supported runtime builds an isolated, hash-locked environment with the pinned dependencies "
@@ -118,7 +119,7 @@ TEMPLATE = {
         "`USE_BYOD_IMAGE` runs your own image (from `BYOD_IMAGE_PATH`, or the Colab upload dialog when the path is empty) through the detection and validation contract. `USE_BYOD_DATASET` takes your own labelled "
         "detection dataset (`BYOD_DATASET_PATH`: a folder or `.zip` with `annotations.csv`, or the Colab upload dialog when the path is "
         "empty) through the full adaptation workflow (validate, split, coverage check, baseline, fine-tune, evaluate, export, reload) "
-        "under NOTEBOOK_SPEC 2.2 DAT14."
+        "under NOTEBOOK_SPEC 2.5 DAT14."
     ),
     "cells": [
         # ---------------------------------------------------------------- 4. COCO scene
@@ -316,7 +317,7 @@ TEMPLATE = {
         },
         {
             "md": (
-                "<details><summary>Check your reasoning</summary>It falls at every epoch, by about half: in the worked run the epoch losses were 39.62, 25.58 and 19.30 (19,259,121 of 42,733,137 parameters trained, 137 s on a laptop CPU). The dataset is small and regular and the heads start from a bias prior, so the loss drops fast; the loss is the optimiser's signal, and AP in Section 9 is the evaluation. Rerunning this cell unchanged gives the same first-epoch loss, because it rebuilds the model before training.</details>"
+                "<details><summary>Check your reasoning</summary>It falls at every epoch, by about half: in the worked run (2026-10-09 local CPU, not re-run here) the epoch losses were 39.62, 25.58 and 19.30 (19,259,121 of 42,733,137 parameters trained, 137 s on a laptop CPU); hosted T4 runs print different decimals, so compare the shape, not the digits. The dataset is small and regular and the heads start from a bias prior, so the loss drops fast; the loss is the optimiser's signal, and AP in Section 9 is the evaluation. Rerunning this cell unchanged gives the same first-epoch loss, because it rebuilds the model before training.</details>"
             ),
         },
         # ---------------------------------------------------------------- 9. Evaluate Held-Out
@@ -369,7 +370,7 @@ TEMPLATE = {
         },
         {
             "md": (
-                '<details><summary>Check your reasoning</summary>Around 0.85, not higher. In the worked run three epochs took the held-out split from AP 0.000 to AP 0.8494 and AP50 0.8535 (the earlier hosted T4 record reached AP 0.9161; GPU and CPU runs differ, so treat the second decimal as run-to-run variation). AP is only a little below AP50, so most matched boxes are tight. The zero-training reference is the more useful comparison. The unadapted COCO detector, never trained here, scored AP 1.000 on the five held-out stop signs — the same as the adapted model (stop-sign AP 1.000). So for the one class COCO already knew, adaptation added nothing measurable; what it added is the two classes COCO lacks (yield-sign AP50 0.914, speed-limit-sign 0.646 in the worked run). And remember the colour-and-shape rule that scored AP 1.000 on all three classes: the adapted detector does not beat a trivial rule on this task, which is why this notebook claims a working workflow, not a strong model.</details>'
+                '<details><summary>Check your reasoning</summary>Well above the zero baseline, but the exact value depends on the run. In the worked run (2026-10-09 local CPU, not re-run here) three epochs took the held-out split from AP 0.000 to AP 0.8494 and AP50 0.8535; hosted T4 runs of earlier blobs printed AP 0.9452 (`e2ab4517`, 2026-10-09) and 0.9344 (`0dd61e64`, 2026-10-25). With ten held-out images, read differences of several hundredths as run-to-run variation. AP is only a little below AP50, so most matched boxes are tight. The zero-training reference is the more useful comparison. The unadapted COCO detector, never trained here, scored AP 1.000 on the five held-out stop signs. The adapted stop-sign AP equalled it in the worked run (1.000) and fell below it in one hosted T4 run (0.934, `e2ab4517`). So for the one class COCO already knew, adaptation showed no measurable gain and can cost a little; what it added is the two classes COCO lacks (yield-sign AP50 0.914 and speed-limit-sign 0.646 in the worked run; compare your printed per-class line). And remember the colour-and-shape rule that scored AP 1.000 on all three classes: the adapted detector does not beat a trivial rule on this task, which is why this notebook claims a working workflow, not a strong model.</details>'
             ),
         },
         # ---------------------------------------------------------------- 10. New-data inference
@@ -407,8 +408,8 @@ TEMPLATE = {
             "md": (
                 "**What to notice.** Read each row against its `truth`. A `same_label_iou` of 0.0 is a **miss**; more detections of one label than "
                 "that label has objects is a **duplicate** (no NMS, so two queries can fire on one sign); a score just above 0.3 is a detection the "
-                "threshold barely kept. In the worked run image 0 had three `yield-sign` detections for two signs (one sign found twice), image 1's speed-limit "
-                "sign was missed and its yield sign was found twice, and two of the kept scores were 0.302. The threshold 0.3 was carried over from the COCO model in Section 4; nobody chose it for this three-class model. **Who owns it?** "
+                "threshold barely kept. In the worked run (2026-10-09 local CPU, not re-run here) image 0 had three `yield-sign` detections for two signs (one sign found twice), image 1's speed-limit "
+                "sign was missed and its yield sign was found twice, and two of the kept scores were 0.302. Your table may differ: one hosted T4 run (`e2ab4517`) found all five signs, with two extra `yield-sign` boxes on image 1. The threshold 0.3 was carried over from the COCO model in Section 4; nobody chose it for this three-class model. **Who owns it?** "
                 "You do: a deployment would pick it on its own validation images (for example, the threshold that maximises F1 on the training "
                 "split) and report misses and duplicates at that threshold."
             ),
@@ -451,7 +452,7 @@ TEMPLATE = {
         },
         {
             "md": (
-                '<details><summary>Check your reasoning</summary>Exactly 0 in the worked run (CPU), on 13 images × 300 queries with 24 detections at the threshold. Same weights on the same device usually give identical outputs; a GPU may show differences around 1e-6, which is why the check uses a tolerance and does not claim "identical". A difference beyond the tolerance means the artifact does not carry the adapted weights, and the cell stops rather than accepting a broken adapter.</details>'
+                '<details><summary>Check your reasoning</summary>Exactly 0 in the worked run (2026-10-09 local CPU, not re-run here), on 13 images × 300 queries with 24 detections at the threshold; the hosted T4 runs also printed 0.0, with 26 and 36 detections, because the count depends on the trained weights. Same weights on the same device usually give identical outputs; a GPU may show differences around 1e-6, which is why the check uses a tolerance and does not claim "identical". A difference beyond the tolerance means the artifact does not carry the adapted weights, and the cell stops rather than accepting a broken adapter.</details>'
             ),
         },
         # ---------------------------------------------------------------- 12. Outputs & provenance
@@ -637,34 +638,35 @@ TEMPLATE = {
         "## Interpretation and limits\n\n"
         "**What this notebook established, in this runtime.** The pinned `PekingU/rtdetr_r50vd` snapshot was verified against a committed "
         "SHA-256 manifest. The pretrained RT-DETR detector found three of the four drawn objects with the IoU values Section 4 printed "
-        "(0.877–0.983 in the worked run) and missed the sports ball. On blank and noise images it still produced one detection each at 0.3 "
+        "(0.877–0.983 in the worked run and in the hosted T4 runs) and missed the sports ball. On blank and noise images it still produced one detection each at 0.3 "
         "(Section 5), so the threshold belongs to the deployment. A non-COCO three-class sign vocabulary was adapted by re-heading the detector, "
         "setting prior probability biases, fine-tuning the hybrid encoder and decoder with the ResNet backbone frozen, and scoring held-out "
         "validation with COCO-style average precision before and after (Section 9 printed both). Detections on unseen data were written out "
         "with their misses and duplicates, and the adapter artifact was saved with its training settings, reloaded, and its raw outputs "
         "matched the in-memory model within the stated tolerance.\n\n"
-        "**How to read the adaptation number.** The baseline is zero by construction, so \"0 → about 0.85\" shows that a re-headed model "
-        "learns, not how much. Compare the adapted stop-sign AP with the unadapted COCO detector's line in Section 9 (both 1.000 in the worked run: "
-        "the pretrained model already found these drawn stop signs), and remember that a colour-and-shape rule with no learning scored AP 1.000 on the same held-out images in the review of this notebook: the drawn task is "
+        "**How to read the adaptation number.** The baseline is zero by construction, so \"0 → the adapted AP Section 9 printed\" shows that a re-headed model "
+        "learns, not how much. Compare the adapted stop-sign AP with the unadapted COCO detector's line in Section 9 (both 1.000 in the worked run, and 1.000 against 0.934 in one hosted T4 run: "
+        "the pretrained model already found these drawn stop signs, and adaptation did not improve on it), and remember that a colour-and-shape rule with no learning scored AP 1.000 on the same held-out images in the review of this notebook: the drawn task is "
         "easy, and the adapted detector does not beat that rule. What the run demonstrates is a correct, reproducible adaptation workflow.\n\n"
-        "**Run-to-run variation.** CPU and GPU runs give different adapted metrics: the worked CPU run reached AP 0.8494, the earlier hosted T4 "
-        "record 0.9161. With ten held-out images, one detection more or less moves AP by several hundredths, so read differences in the "
+        "**Run-to-run variation.** CPU and GPU runs give different adapted metrics: the worked CPU run (2026-10-09) reached AP 0.8494, and hosted T4 runs of earlier blobs "
+        "0.9452 (`e2ab4517`) and 0.9344 (`0dd61e64`). Training is not bitwise reproducible across T4 sessions either. With ten held-out images, one detection more or less moves AP by several hundredths, so read differences in the "
         "second decimal as variation, not as an effect.\n\n"
         "**What a green run proves.** Successful execution proves that the recorded repository revision, the pinned dependency set and the "
         "pinned checkpoint together reproduce these stages in a fresh runtime, without the repository being cloned or installed and without "
         "any DIMER worker or service. It does **not** establish benchmark superiority, fitness for any deployment, or that the adapted model "
         "generalises beyond the synthetic data it was fitted to.\n\n"
         "**Reproducibility.** Seeds are exposed as form parameters (`DATASET_SEED = 0`, `SEED = 0`). Computation runs in float32 without "
-        "stochastic data augmentation, and Section 8 rebuilds the model before each fine-tune. Running unchanged in an identical runtime "
-        "reproduces these results; a different device or library build changes them in the later decimals.\n\n"
+        "stochastic data augmentation, and Section 8 rebuilds the model before each fine-tune. Rerunning in the same session reproduces Section 8's first-epoch loss; "
+        "a new GPU session, a different device or a different library build changes the training-dependent numbers, by up to about 0.1 AP so far.\n\n"
         '## Troubleshooting\n'
         '\n'
         '- **Section 1 stops with "This notebook needs a Linux x86_64 runtime"** — use Google Colab, Kaggle or a Linux x86_64 Jupyter server.\n'
         '- **The uv wheel fails its size/SHA-256 check, or a download in Section 1 times out** — run Section 1 again; a complete environment is reused and an incomplete one is finished. If it repeats, `files.pythonhosted.org` or `pypi.org` is blocked or altered.\n'
+        '- **Where the environment lives** — Section 1 builds it in a folder named `dimer_isolated_env_<lock digest>` in the working directory. Set the environment variable `DIMER_ISOLATED_ENV` before Section 1 to build it somewhere else.\n'
         '- **You re-ran Section 1 on its own** — nothing is lost: it keeps the running worker and every variable. After a session restart, run from the top.\n'
         '- **"The isolated environment\'s Python process exited"** — usually out of memory; restart the session and choose **Run all**.\n'
         '- **Section 3 reports a size or SHA-256 mismatch, or cannot reach the Hub** — the message names the file. Delete the folder Section 3 prints as `weights_dir` and run Section 3 again (172 MB).\n'
-        "- **Section 4 finds fewer than three of the four drawn objects, or Section 9 stays near zero** — on CPU and GPU the numbers can differ in the third decimal; a very different result means a different runtime (check `torch` and `transformers` versions in Section 1's record) or a changed form field.\n"
+        "- **Section 4 finds fewer than three of the four drawn objects, or Section 9 stays near zero** — Sections 4–5 printed the same numbers on CPU and GPU, and the adapted AP in Section 9 has ranged from about 0.85 to 0.95 between runs; a very different result means a different runtime (check `torch` and `transformers` versions in Section 1's record) or a changed form field.\n"
         '- **You changed a Section 8 form value** — rerun Section 8 and then Section 9. Section 8 rebuilds the model from the snapshot first, so nothing carries over from an earlier run; if you also changed `HOLDOUT` or `SEED`, rerun from Section 7.\n'
         '- **The fine-tune is slow** — on CPU three epochs over 30 images took 80–140 s in local checks (estimate; Section 8 prints the measured `train_seconds`); a GPU runtime makes it seconds. `FREEZE_BACKBONE = False` trains all 42.7 M parameters and is slower.\n'
         "- **Section 11's reload check fails** — the export or reload is broken, or the compared images held no detection at the threshold; the message prints the numbers. Run Sections 8–11 again. Do not use the artifact.\n"
@@ -698,11 +700,11 @@ TEMPLATE = {
         'Before you leave, write three lines in this cell: (1) which drawn object the pretrained detector missed and why a miss on a drawn scene is a finding, not an error; (2) the baseline, adapted and zero-training-reference numbers from Section 9, and why the adapted AP alone does not show the task was hard; (3) what you would need — labelled photographs, a held-out split, a threshold chosen on validation — before trusting such numbers on real images.\n'
         '\n'
         "## References\n\n"
-        "- Zhao, Y., Lv, W., Xu, S., Wei, J., Wang, G., Dang, Q., Liu, Y. and Chen, J. (2023). *DETRs Beat YOLOs on Real-time Object Detection.* [arXiv:2304.08069](https://arxiv.org/abs/2304.08069).\n"
-        "- Upstream repository: [lyuwenyu/RT-DETR](https://github.com/lyuwenyu/RT-DETR) — Apache-2.0.\n"
-        "- Hugging Face checkpoint: [PekingU/rtdetr_r50vd](https://huggingface.co/PekingU/rtdetr_r50vd) — Apache-2.0.\n"
-        "- Lin, T.-Y. et al. (2014). *Microsoft COCO: Common Objects in Context.* [arXiv:1405.0312](https://arxiv.org/abs/1405.0312).\n"
-        "- Repository model card: https://github.com/kurtvalcorza/rtdetr-detection-pipeline/blob/main/MODEL_CARD.md\n"
-        "- [`kurtvalcorza/rtdetr-detection-pipeline`](https://github.com/kurtvalcorza/rtdetr-detection-pipeline) — source repository for this pipeline."
+        "[1] Y. Zhao, W. Lv, S. Xu, J. Wei, G. Wang, Q. Dang, Y. Liu, and J. Chen, \"DETRs beat YOLOs on real-time object detection,\" arXiv:2304.08069, 2023. [Online]. Available: https://arxiv.org/abs/2304.08069\n\n"
+        "[2] T.-Y. Lin *et al.*, \"Microsoft COCO: Common objects in context,\" arXiv:1405.0312, 2014. [Online]. Available: https://arxiv.org/abs/1405.0312\n\n"
+        "[3] W. Lyu, \"RT-DETR,\" GitHub repository (Apache-2.0). [Online]. Available: https://github.com/lyuwenyu/RT-DETR\n\n"
+        "[4] PekingU, \"rtdetr_r50vd,\" Hugging Face model checkpoint (Apache-2.0). [Online]. Available: https://huggingface.co/PekingU/rtdetr_r50vd\n\n"
+        "[5] K. Valcorza, \"rtdetr-detection-pipeline: model card,\" GitHub. [Online]. Available: https://github.com/kurtvalcorza/rtdetr-detection-pipeline/blob/main/MODEL_CARD.md\n\n"
+        "[6] K. Valcorza, \"rtdetr-detection-pipeline,\" GitHub repository (source of this notebook). [Online]. Available: https://github.com/kurtvalcorza/rtdetr-detection-pipeline"
     ),
 }
