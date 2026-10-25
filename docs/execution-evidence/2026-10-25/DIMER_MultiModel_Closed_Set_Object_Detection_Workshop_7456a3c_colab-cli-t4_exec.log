@@ -1,0 +1,298 @@
+[colab] Parsing notebook '<local-run-dir>/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop_7456a3c_colab-cli-t4.ipynb'...
+[colab] Executing cell 1/32 - Infrastructure: build the locked isolated environment...
+{'isolated_environment': '/content/dimer_isolated_env', 'isolated_python': '3.12.12', 'kernel_python': '3.13.16', 'locked_packages': 57, 'setup_seconds': 53}
+[colab] Executing cell 2/32 - Route the remaining cells to the isolated environment...
+Every later code cell now runs in /content/dimer_isolated_env/bin/python (pid 852).
+[colab] Executing cell 3/32 - Notebook controls...
+{'run_id': '20261025T002717Z-580588', 'output_root': 'outputs/runs/20261025T002717Z-580588', 'tier': 'STANDARD', 'models': ['rtdetr', 'yolox_s'], 'dataset_images': 60, 'classes': ('stop-sign', 'yield-sign', 'speed-limit-sign'), 'split_seed': 42}
+[colab] Executing cell 4/32 - Record the isolated runtime...
+{'environment': 'isolated uv environment', 'python': '3.12.12', 'torch': '2.14.0+cu130', 'torchvision': '0.29.0+cu130', 'transformers': '4.57.6', 'numpy': '2.1.3', 'pin_mismatches': [], 'device': 'cuda:0', 'gpu': 'Tesla T4'}
+[colab] Executing cell 5/32 - Immutable model specifications...
+[colab] Executing cell 6/32 - Deterministic sign generator...
+{'images': 60, 'boxes': 120, 'class_counts': {'stop-sign': 29, 'yield-sign': 48, 'speed-limit-sign': 43}}
+[colab] Executing cell 7/32 - Split and validate records...
+train 36 {'stop-sign': 12, 'yield-sign': 35, 'speed-limit-sign': 26}
+validation 12 {'stop-sign': 10, 'yield-sign': 6, 'speed-limit-sign': 9}
+test 12 {'stop-sign': 7, 'yield-sign': 7, 'speed-limit-sign': 8}
+dataset_sha256 823df4cf634db78216dccf5a6988171248b844beb5303ecc8c1f1b80ca302169
+[colab] Executing cell 8/32 - Dataset gallery...
+<Figure size 1200x800 with 6 Axes>
+
+[Image saved to: /tmp/tmp1ds62o93.png]
+[colab] Executing cell 9/32 - IoU, AP, precision/recall helpers...
+{'empty_detector': {'ap': 0.0, 'ap50': 0.0, 'ap75': 0.0, 'per_class_ap50': {'stop-sign': 0.0, 'yield-sign': 0.0, 'speed-limit-sign': 0.0}, 'n_images': 12, 'n_references': 25}}
+[colab] Executing cell 10/32 - RT-DETR snapshot staging...
+RT-DETR snapshot verified: work/rtdetr_weights
+[colab] Executing cell 11/32 - Stage verified upstream YOLOX source...
+{'upstream_revision': '419778480ab6ec0590e5d3831b3afb3b46ab2aa3', 'modules': ['__init__.py', 'coco_classes.py', 'darknet.py', 'losses.py', 'network_blocks.py', 'ops.py', 'yolo_head.py', 'yolo_pafpn.py', 'yolox.py'], 'source_carrier': 'inline; original upstream SHA-256 verified'}
+[colab] Executing cell 12/32 - Adapter artifact files: safetensors weights plus a plain-JSON sidecar...
+[colab] Executing cell 13/32 - RT-DETR reference wrapper...
+[colab] Executing cell 14/32 - Generic YOLOX-S / YOLOX-X reference wrapper...
+[colab] Executing cell 15/32 - Re-head core detectors and score validation before training...
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+Some weights of RTDetrForObjectDetection were not initialized from the model checkpoint at work/rtdetr_weights and are newly initialized because the shapes did not match:
+- model.decoder.class_embed.0.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.0.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.1.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.1.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.2.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.2.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.3.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.3.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.4.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.4.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.5.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.5.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.denoising_class_embed.weight: found shape torch.Size([81, 256]) in the checkpoint and torch.Size([4, 256]) in the model instantiated
+- model.enc_score_head.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.enc_score_head.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+| model | ap | ap50 | ap75 | per_class_ap50 | n_images | n_references |         
+precision50 | recall50 | mean_matched_iou | false_positives_per_image |         
+missed_objects_per_image                                                        
+---|---|---|---|---|---|---|---|---|---|---|---|---                             
+0 | rtdetr | 0.085809 | 0.135314 | 0.069307 | {'stop-sign': 0.40594059405940597,
+'yield-sign... | 12 | 25 | 0.0 | 0.0 | 0.0 | 0.000000 | 2.083333                
+1 | yolox_s | 0.075578 | 0.082921 | 0.082921 | {'stop-sign': 0.0, 'yield-sign': 
+0.0, 'speed-l... | 12 | 25 | 0.0 | 0.0 | 0.0 | 0.333333 | 2.083333              
+Display only: class-agnostic AP before adaptation (labels collapsed; not frozen, not used later).
+| model | class_agnostic_ap | class_agnostic_ap50 | class_agnostic_ap75         
+---|---|---|---|---                                                             
+0 | rtdetr | 0.086560 | 0.092954 | 0.089109                                     
+1 | yolox_s | 0.612207 | 0.643564 | 0.643564                                    
+[colab] Executing cell 16/32 - Fine-tune selected detectors...
+RT-DETR {'epoch': 1, 'loss': 37.22110917833116}
+RT-DETR {'epoch': 2, 'loss': 24.263912412855362}
+RT-DETR {'epoch': 3, 'loss': 19.44077470567491}
+/content/work/yolox_upstream/yolox_ref/yolo_head.py:488: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+yolox_s {'epoch': 1, 'total_loss': 4.490828606817457, 'iou_loss': 1.4129933416843414, 'l1_loss': 0.0, 'conf_loss': 1.351282000541687, 'cls_loss': 1.7265532579686906, 'num_fg': 8.300925925925927}
+yolox_s {'epoch': 2, 'total_loss': 2.864715152316623, 'iou_loss': 1.4633125464121501, 'l1_loss': 0.0, 'conf_loss': 0.5914310382472144, 'cls_loss': 0.8099715676572588, 'num_fg': 8.030555555555557}
+yolox_s {'epoch': 3, 'total_loss': 2.223243455092112, 'iou_loss': 1.2808030479484134, 'l1_loss': 0.0, 'conf_loss': 0.4482504344648785, 'cls_loss': 0.4941899925470352, 'num_fg': 8.205555555555556}
+yolox_s {'epoch': 4, 'total_loss': 1.9572843710581462, 'iou_loss': 1.0791447559992473, 'l1_loss': 0.0, 'conf_loss': 0.4657433248228497, 'cls_loss': 0.4123962852689955, 'num_fg': 8.462962962962964}
+yolox_s {'epoch': 5, 'total_loss': 1.8819565640555487, 'iou_loss': 1.0624825325277116, 'l1_loss': 0.0, 'conf_loss': 0.4258092790842056, 'cls_loss': 0.39366474085383946, 'num_fg': 8.462037037037039}
+yolox_s {'epoch': 6, 'total_loss': 1.7020600967937045, 'iou_loss': 0.9791712860266367, 'l1_loss': 0.0, 'conf_loss': 0.35802849133809406, 'cls_loss': 0.36486031942897373, 'num_fg': 8.523148148148147}
+| model | trainable_parameters | total_parameters | training_seconds |          
+stage_peak_vram_MiB | artifact_MiB                                              
+---|---|---|---|---|---|---                                                     
+0 | rtdetr | 19259121 | 42733137 | 13.627976 | 2553.402344 | 166.653408         
+1 | yolox_s | 1891096 | 8938456 | 5.289654 | 621.153809 | 34.232437             
+stage_peak_vram_MiB is the peak during that model's training stage with all selected detectors loaded; it is not a standalone per-model memory requirement.
+{'optimizer_steps': {'rtdetr': 27, 'yolox_s': 108}, 'recipes_tuned_on_validation': False}
+[colab] Executing cell 17/32 - Validation after adaptation...
+| model | ap | ap50 | ap75 | per_class_ap50 | n_images | n_references |         
+precision50 | recall50 | mean_matched_iou | false_positives_per_image |         
+missed_objects_per_image                                                        
+---|---|---|---|---|---|---|---|---|---|---|---|---                             
+0 | rtdetr | 0.886357 | 0.894929 | 0.894929 | {'stop-sign': 0.9628712871287128, 
+'yield-sign'... | 12 | 25 | 0.909091 | 0.4 | 0.975011 | 0.083333 | 1.25         
+1 | yolox_s | 0.879066 | 1.000000 | 1.000000 | {'stop-sign': 1.0, 'yield-sign': 
+1.0, 'speed-l... | 12 | 25 | 1.000000 | 1.0 | 0.924740 | 0.000000 | 0.00        
+| model | ap_pre | ap50_pre | ap75_pre | ap_post | ap50_post | ap75_post        
+---|---|---|---|---|---|---|---                                                 
+0 | rtdetr | 0.085809 | 0.135314 | 0.069307 | 0.886357 | 0.894929 | 0.894929    
+1 | yolox_s | 0.075578 | 0.082921 | 0.082921 | 0.879066 | 1.000000 | 1.000000   
+[colab] Executing cell 18/32 - Validation-only display-threshold sweep...
+| model | threshold | precision50 | recall50 | mean_matched_iou |               
+false_positives_per_image | missed_objects_per_image                            
+---|---|---|---|---|---|---|---                                                 
+0 | rtdetr | 0.05 | 0.020833 | 1.00 | 0.968060 | 97.916667 | 0.000000           
+1 | rtdetr | 0.10 | 0.068871 | 1.00 | 0.968060 | 28.166667 | 0.000000           
+2 | rtdetr | 0.20 | 0.389831 | 0.92 | 0.968281 | 3.000000 | 0.166667            
+3 | rtdetr | 0.30 | 0.909091 | 0.40 | 0.975011 | 0.083333 | 1.250000            
+4 | rtdetr | 0.50 | 1.000000 | 0.16 | 0.974790 | 0.000000 | 1.750000            
+5 | rtdetr | 0.70 | 0.000000 | 0.00 | 0.000000 | 0.000000 | 2.083333            
+6 | yolox_s | 0.05 | 0.961538 | 1.00 | 0.924740 | 0.083333 | 0.000000           
+7 | yolox_s | 0.10 | 1.000000 | 1.00 | 0.924740 | 0.000000 | 0.000000           
+8 | yolox_s | 0.20 | 1.000000 | 1.00 | 0.924740 | 0.000000 | 0.000000           
+9 | yolox_s | 0.30 | 1.000000 | 1.00 | 0.924740 | 0.000000 | 0.000000           
+10 | yolox_s | 0.50 | 1.000000 | 1.00 | 0.924740 | 0.000000 | 0.000000          
+11 | yolox_s | 0.70 | 1.000000 | 1.00 | 0.924740 | 0.000000 | 0.000000          
+  model  threshold  precision50  recall50    f1_50
+ rtdetr       0.05     0.020833      1.00 0.040816
+ rtdetr       0.10     0.068871      1.00 0.128866
+ rtdetr       0.20     0.389831      0.92 0.547619
+ rtdetr       0.30     0.909091      0.40 0.555556
+ rtdetr       0.50     1.000000      0.16 0.275862
+ rtdetr       0.70     0.000000      0.00 0.000000
+yolox_s       0.05     0.961538      1.00 0.980392
+yolox_s       0.10     1.000000      1.00 1.000000
+yolox_s       0.20     1.000000      1.00 1.000000
+yolox_s       0.30     1.000000      1.00 1.000000
+yolox_s       0.50     1.000000      1.00 1.000000
+yolox_s       0.70     1.000000      1.00 1.000000
+{'validation_operating_points': {'rtdetr': 0.3, 'yolox_s': 0.7}, 'rule': 'max validation F1 at IoU 0.5'}
+[colab] Executing cell 19/32 - Freeze experiment...
+Frozen: outputs/runs/20261025T002717Z-580588/frozen/frozen_experiment.json experiment_id 36728823c1e67682f873a830cde404aef781633d53628451b2f037a3c0a91d49
+[colab] Executing cell 20/32 - Fresh reconstruction and test evaluation...
+{'experiment_id': '36728823c1e67682f873a830cde404aef781633d53628451b2f037a3c0a91d49', 'effective_evaluation': {'score_cutoff': 0.01, 'display_threshold': 0.3, 'yolox_nms': 0.65, 'max_detections': 100, 'iou_thresholds': [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], 'class_names': ['stop-sign', 'yield-sign', 'speed-limit-sign'], 'metric': 'notebook-owned class-aware 101-point interpolated AP'}}
+{'frozen_validation_operating_points': {'rtdetr': 0.3, 'yolox_s': 0.7}}
+Some weights of RTDetrForObjectDetection were not initialized from the model checkpoint at work/rtdetr_weights and are newly initialized because the shapes did not match:
+- model.decoder.class_embed.0.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.0.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.1.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.1.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.2.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.2.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.3.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.3.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.4.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.4.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.5.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.5.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.denoising_class_embed.weight: found shape torch.Size([81, 256]) in the checkpoint and torch.Size([4, 256]) in the model instantiated
+- model.enc_score_head.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.enc_score_head.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+| model | state | inference_seconds | ms_per_image | ap | ap50 | ap75 |         
+per_class_ap50 | n_images | n_references | precision50 | recall50 |             
+mean_matched_iou | false_positives_per_image | missed_objects_per_image         
+---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---                 
+0 | rtdetr | pre | 0.804426 | 67.035462 | 0.049505 | 0.049505 | 0.049505 |      
+{'stop-sign': 0.1485148514851485, 'yield-sign'... | 12 | 22 | 0.000000 |        
+0.000000 | 0.000000 | 0.000000 | 1.833333                                       
+1 | rtdetr | adapted | 0.847081 | 70.590073 | 0.915711 | 0.929226 | 0.929226 |  
+{'stop-sign': 0.9669966996699667, 'yield-sign'... | 12 | 22 | 0.823529 |        
+0.636364 | 0.973936 | 0.250000 | 0.666667                                       
+2 | yolox_s | pre | 0.176255 | 14.687903 | 0.034398 | 0.037624 | 0.037624 |     
+{'stop-sign': 0.0, 'yield-sign': 0.0, 'speed-l... | 12 | 22 | 0.000000 |        
+0.000000 | 0.000000 | 0.333333 | 1.833333                                       
+3 | yolox_s | adapted | 0.176871 | 14.739269 | 0.849780 | 1.000000 | 1.000000 | 
+{'stop-sign': 1.0, 'yield-sign': 1.0, 'speed-l... | 12 | 22 | 1.000000 |        
+1.000000 | 0.914715 | 0.000000 | 0.000000                                       
+625435
+[colab] Executing cell 21/32 - Per-class AP50 table...
+| model | state | class | ap50                                                  
+---|---|---|---|---                                                             
+0 | rtdetr | pre | stop-sign | 0.148515                                         
+1 | rtdetr | pre | yield-sign | 0.000000                                        
+2 | rtdetr | pre | speed-limit-sign | 0.000000                                  
+3 | rtdetr | adapted | stop-sign | 0.966997                                     
+4 | rtdetr | adapted | yield-sign | 1.000000                                    
+5 | rtdetr | adapted | speed-limit-sign | 0.820682                              
+6 | yolox_s | pre | stop-sign | 0.000000                                        
+7 | yolox_s | pre | yield-sign | 0.000000                                       
+8 | yolox_s | pre | speed-limit-sign | 0.112871                                 
+9 | yolox_s | adapted | stop-sign | 1.000000                                    
+10 | yolox_s | adapted | yield-sign | 1.000000                                  
+11 | yolox_s | adapted | speed-limit-sign | 1.000000                            
+[colab] Executing cell 22/32 - Label-blind spatial-association (class-confusion) counts at each model's operating point...
+rtdetr at operating point 0.30: 0 cross-class confusion(s); label-blind counts, not the class-aware TP/FP/FN
+                     stop-sign  yield-sign  speed-limit-sign  missed
+reference                                                           
+stop-sign                    0           0                 0       7
+yield-sign                   0           7                 0       0
+speed-limit-sign             0           0                 7       1
+unmatched detection          0           0                 3       0
+yolox_s at operating point 0.70: 0 cross-class confusion(s); label-blind counts, not the class-aware TP/FP/FN
+                     stop-sign  yield-sign  speed-limit-sign  missed
+reference                                                           
+stop-sign                    7           0                 0       0
+yield-sign                   0           7                 0       0
+speed-limit-sign             0           0                 8       0
+unmatched detection          0           0                 0       0
+[colab] Executing cell 23/32 - Size and density recall diagnostics...
+Table 1: recall50 at the shared raw-score threshold DISPLAY_THRESHOLD=0.30. It is a different operating point for each model's score scale.
+| model | dimension | group | recall50 | objects                                
+---|---|---|---|---|---                                                         
+0 | rtdetr | size | small | 0.875000 | 8                                        
+1 | rtdetr | size | medium | 0.538462 | 13                                      
+2 | rtdetr | size | large | 0.000000 | 1                                        
+3 | rtdetr | scene_density | 1 | 0.500000 | 4                                   
+4 | rtdetr | scene_density | 2 | 0.666667 | 12                                  
+5 | rtdetr | scene_density | 3 | 0.666667 | 6                                   
+6 | yolox_s | size | small | 1.000000 | 8                                       
+7 | yolox_s | size | medium | 1.000000 | 13                                     
+8 | yolox_s | size | large | 1.000000 | 1                                       
+9 | yolox_s | scene_density | 1 | 1.000000 | 4                                  
+10 | yolox_s | scene_density | 2 | 1.000000 | 12                                
+11 | yolox_s | scene_density | 3 | 1.000000 | 6                                 
+{'observed_box_area_fraction_range_by_class_all_60_images': {'stop-sign': [0.0192, 0.0408], 'yield-sign': [0.0171, 0.0379], 'speed-limit-sign': [0.0102, 0.0237]}}
+Table 2: group composition of the test set (descriptive slices; size is confounded with class).
+        dimension  group  objects  images  n_stop-sign  n_yield-sign  n_speed-limit-sign
+             size  small        8       5            0             1                   7
+             size medium       13       8            6             6                   1
+             size  large        1       1            1             0                   0
+objects_per_scene      1        4       4            2             1                   1
+objects_per_scene      2       12       6            4             5                   3
+objects_per_scene      3        6       2            1             1                   4
+Table 3: recall50 = hits/objects at each model's validation-chosen operating point. ap50_over_retained_predictions uses the evaluator's retained detections (cutoff 0.01, at most 100 per image) and averages only over the classes present; size groups have no per-group AP because false detections cannot be assigned a size. Sparse slices: do not rank them.
+  model  operating_point         dimension  group  hits  objects  recall50  images  ap50_over_retained_predictions                      classes_in_ap_mean directly_comparable
+ rtdetr              0.3              size  small     7        8  0.875000       5                             NaN                                            descriptive only
+ rtdetr              0.3              size medium     7       13  0.538462       8                             NaN                                            descriptive only
+ rtdetr              0.3              size  large     0        1  0.000000       1                             NaN                                            descriptive only
+ rtdetr              0.3 objects_per_scene      1     2        4  0.500000       4                        1.000000 stop-sign, yield-sign, speed-limit-sign                 yes
+ rtdetr              0.3 objects_per_scene      2     8       12  0.666667       6                        1.000000 stop-sign, yield-sign, speed-limit-sign                 yes
+ rtdetr              0.3 objects_per_scene      3     4        6  0.666667       2                        0.923385 stop-sign, yield-sign, speed-limit-sign                 yes
+yolox_s              0.7              size  small     8        8  1.000000       5                             NaN                                            descriptive only
+yolox_s              0.7              size medium    13       13  1.000000       8                             NaN                                            descriptive only
+yolox_s              0.7              size  large     1        1  1.000000       1                             NaN                                            descriptive only
+yolox_s              0.7 objects_per_scene      1     4        4  1.000000       4                        1.000000 stop-sign, yield-sign, speed-limit-sign                 yes
+yolox_s              0.7 objects_per_scene      2    12       12  1.000000       6                        1.000000 stop-sign, yield-sign, speed-limit-sign                 yes
+yolox_s              0.7 objects_per_scene      3     6        6  1.000000       2                        1.000000 stop-sign, yield-sign, speed-limit-sign                 yes
+[colab] Executing cell 24/32 - Per-image adapted metrics for disagreement analysis...
+| image_id | n_objects | rtdetr_ap50 | rtdetr_detections | yolox_s_ap50 |       
+yolox_s_detections | rtdetr_advantage | detection_count_difference              
+---|---|---|---|---|---|---|---|---                                             
+0 | sign-001 | 2 | 1.0 | 0 | 1.0 | 2 | 0.0 | -2                                 
+1 | sign-002 | 2 | 1.0 | 2 | 1.0 | 2 | 0.0 | 0                                  
+2 | sign-008 | 2 | 1.0 | 1 | 1.0 | 2 | 0.0 | -1                                 
+3 | sign-012 | 1 | 1.0 | 0 | 1.0 | 1 | 0.0 | -1                                 
+4 | sign-013 | 1 | 1.0 | 2 | 1.0 | 1 | 0.0 | 1                                  
+| image_id | n_objects | rtdetr_ap50 | rtdetr_detections | yolox_s_ap50 |       
+yolox_s_detections | rtdetr_advantage | detection_count_difference              
+---|---|---|---|---|---|---|---|---                                             
+7 | sign-036 | 3 | 0.915842 | 2 | 1.0 | 3 | -0.084158 | -1                      
+0 | sign-001 | 2 | 1.000000 | 0 | 1.0 | 2 | 0.000000 | -2                       
+2 | sign-008 | 2 | 1.000000 | 1 | 1.0 | 2 | 0.000000 | -1                       
+1 | sign-002 | 2 | 1.000000 | 2 | 1.0 | 2 | 0.000000 | 0                        
+3 | sign-012 | 1 | 1.000000 | 0 | 1.0 | 1 | 0.000000 | -1                       
+[colab] Executing cell 25/32 - Plot comparison examples from this run...
+No test image where RT-DETR's per-image AP50 exceeds YOLOX-S's; no RT-DETR advantage example.
+<Figure size 1500x500 with 3 Axes>
+
+[Image saved to: /tmp/tmpkf3_kqj4.png]
+<Figure size 1500x500 with 3 Axes>
+
+[Image saved to: /tmp/tmp_mrj6hlr.png]
+[colab] Executing cell 26/32 - Optional (FULL only): multi-seed repeat of bounded adaptation...
+Multi-seed repeat skipped: it runs only in the FULL tier (STANDARD keeps the single seed-0 run).
+[colab] Executing cell 27/32 - Tradeoff table...
+| model | weight_MiB | parameters_M | trainable_M | training_seconds |          
+ms_per_test_image | artifact_MiB | test_ap | test_ap75                          
+---|---|---|---|---|---|---|---|---|---                                         
+0 | rtdetr | 164.199692 | 42.733137 | 19.259121 | 13.627976 | 70.590073 |       
+166.653408 | 0.915711 | 0.929226                                                
+1 | yolox_s | 68.749547 | 8.938456 | 1.891096 | 5.289654 | 14.739269 | 34.232437
+| 0.849780 | 1.000000                                                           
+[colab] Executing cell 28/32 - Artifact reload parity on a fixed validation image...
+{'rtdetr': {'n_detections': 1, 'max_abs_box_difference': 0.0, 'max_abs_score_difference': 0.0}, 'yolox_s': {'n_detections': 1, 'max_abs_box_difference': 0.0, 'max_abs_score_difference': 0.0}}
+[colab] Executing cell 29/32 - New-seed examples...
+| model | precision50 | recall50 | mean_matched_iou | false_positives_per_image 
+| missed_objects_per_image                                                      
+---|---|---|---|---|---|---                                                     
+0 | rtdetr | 0.333333 | 0.428571 | 0.970347 | 2.0 | 1.333333                    
+1 | yolox_s | 1.000000 | 1.000000 | 0.928213 | 0.0 | 0.000000                   
+[colab] Executing cell 30/32 - Optional BYOD: validate, adapt, freeze, reload, evaluate and export...
+BYOD disabled; canonical synthetic E2E path completed.
+[colab] Executing cell 31/32 - Final provenance...
+{'bundle': '/content/outputs/DIMER_Closed_Set_Detection_Workshop_Report_20261025T002717Z-580588.zip', 'sha256': 'afc10742e70963b52d9d32c93091d6f65a089462bed05593bb74003758126b51', 'run_id': '20261025T002717Z-580588', 'files': 34, 'metric_replay': {'rtdetr/pre': 'PASS', 'rtdetr/adapted': 'PASS', 'yolox_s/pre': 'PASS', 'yolox_s/adapted': 'PASS'}}
+[colab] Executing cell 32/32 - Run-all completion summary...
+| value                                                                         
+---|---                                                                         
+notebook_spec | 2.5                                                             
+profile | E2E                                                                   
+mode | WORKSHOP                                                                 
+run_id | 20261025T002717Z-580588                                                
+experiment_id | 36728823c1e67682f873a830cde404aef781633d536284...               
+tier | STANDARD                                                                 
+models | [rtdetr, yolox_s]                                                      
+dataset_sha256 | 823df4cf634db78216dccf5a6988171248b844beb5303e...              
+split_counts | {'train': 36, 'validation': 12, 'test': 12}                      
+artifacts | {'rtdetr': {'path': 'outputs/runs/20261025T002...                   
+reload_parity | {'rtdetr': {'n_detections': 1, 'max_abs_box_di...               
+output_directory | /content/outputs/runs/20261025T002717Z-580588                
+release_status | candidate                                                      
+byod_status | disabled                                                          
+Closed-set detection notebook complete. Interpret built-in metrics as synthetic sample-sanity evidence; release still requires fresh STANDARD/FULL T4 and real-model BYOD qualification.
+[colab] Saving notebook with outputs to '<local-run-dir>/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop_7456a3c_colab-cli-t4_output.ipynb'...

@@ -1,0 +1,312 @@
+[colab] Parsing notebook '<local-run-dir>/rtdetr_detection_colab_7456a3c_colab-cli-t4.ipynb'...
+[colab] Executing cell 1/15 - Infrastructure: build (or reuse) the isolated environment and route later cells to it...
+{'isolated_environment': '/content/dimer_isolated_env_03793fd27347', 'reused': False, 'isolated_python': '3.12.12', 'kernel_python': '3.13.16', 'locked_packages': 48, 'setup_seconds': 50}
+{'routed_to': '/content/dimer_isolated_env_03793fd27347/bin/python', 'worker_pid': 1045, 'worker_reused': False}
+[colab] Executing cell 2/15 - Infrastructure: record the runtime...
+{'notebook_source': {'repository': 'rtdetr-detection-pipeline', 'repository_revision': '27e719525c27db259c2a1ba86649e388b9e1911e', 'embedded_module': 'src/rtdetr_detection_pipeline/pipeline.py', 'embedded_modules': ['src/rtdetr_detection_pipeline/pipeline.py', 'src/rtdetr_detection_pipeline/samples.py'], 'module_sha256': '8a248180f98446685e0138441cc5cda93081efcaccc96f4591615ae08f5ccbea', 'generator': 'build_notebook.py/2.2', 'notebook_spec': '2.2'}, 'python': '3.12.12', 'executable': '/content/dimer_isolated_env_03793fd27347/bin/python', 'torch': '2.14.0+cu130', 'transformers': '4.57.6', 'numpy': '2.5.3', 'PIL': '11.3.0', 'scipy': '1.18.1', 'cuda': True}
+[colab] Executing cell 3/15 - rtdetr_detection-08...
+[colab] Executing cell 4/15 - rtdetr_detection-10...
+[colab] Executing cell 5/15 - Infrastructure: stage and digest-verify the pinned snapshot, then load the model...
+{'model_id': 'PekingU/rtdetr_r50vd', 'revision': 'df939e661d8c52e80608d1ec566561aabd25a4e7', 'license': 'apache-2.0', 'files': 4, 'total_bytes': 172190863}
+{'weights_dir': '/content/weights/rtdetr-r50vd', 'fetched': ['README.md', 'config.json', 'model.safetensors', 'preprocessor_config.json']}
+{'verified_files': 4, 'revision': 'df939e661d8c52e80608d1ec566561aabd25a4e7'}
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+{'device': 'cuda:0', 'source': '/content/weights/rtdetr-r50vd'}
+[colab] Executing cell 6/15 - rtdetr_detection-14...
+{'sample_kind': 'synthetic', 'size': [640, 480], 'sha256': 'ff819833457d69be', 'references': {'stop sign': 1, 'traffic light': 1, 'clock': 1, 'sports ball': 1}}
+{'verdict': 'accepted', 'findings': [], 'inputs': [{'id': 'tutorial-scene', 'mode': 'RGB', 'size': [640, 480]}]}
+     stop sign 0.977  [52, 92, 168, 209]
+         clock 0.965  [410, 71, 551, 211]
+ traffic light 0.931  [270, 61, 323, 212]
+{'verdict': 'sample-sanity', 'n_detections': 3}
+         stop sign-0  box_iou 0.877  same-label detections 1
+     traffic light-0  box_iou 0.965  same-label detections 1
+             clock-0  box_iou 0.983  same-label detections 1
+       sports ball-0  box_iou 0.000  same-label detections 0
+3/4 drawn objects matched at IoU >= 0.5
+<PIL.Image.Image image mode=RGB size=640x480 at 0x7D7D234C7020>
+
+[Image saved to: /tmp/tmpa86tj_yc.png]
+[colab] Executing cell 7/15 - rtdetr_detection-17...
+{
+  "blank": {
+    "at_standard_threshold": 1,
+    "at_evaluation_threshold": 87,
+    "top": [
+      [
+        "train",
+        0.333
+      ],
+      [
+        "train",
+        0.181
+      ],
+      [
+        "train",
+        0.159
+      ]
+    ]
+  },
+  "noise": {
+    "at_standard_threshold": 1,
+    "at_evaluation_threshold": 254,
+    "top": [
+      [
+        "cat",
+        0.391
+      ],
+      [
+        "bird",
+        0.228
+      ],
+      [
+        "cake",
+        0.224
+      ]
+    ]
+  }
+}
+[colab] Executing cell 8/15 - rtdetr_detection-21...
+{
+  "n_records": 40,
+  "n_boxes": 82,
+  "class_names": [
+    "stop-sign",
+    "yield-sign",
+    "speed-limit-sign"
+  ],
+  "observed_classes": [
+    "speed-limit-sign",
+    "stop-sign",
+    "yield-sign"
+  ],
+  "epochs": 3,
+  "verdict": "accepted"
+}
+Adaptation vocabulary: ['stop-sign', 'yield-sign', 'speed-limit-sign']
+Previewing first six synthetic sign images:
+<PIL.Image.Image image mode=RGB size=480x320 at 0x7D7D229A9C10>
+
+[Image saved to: /tmp/tmplbqm7txq.png]
+[colab] Executing cell 9/15 - rtdetr_detection-23...
+Classes per split: {'train': ['speed-limit-sign', 'stop-sign', 'yield-sign'], 'held_out': ['speed-limit-sign', 'stop-sign', 'yield-sign']}
+{'train': 30, 'held_out': 10, 'train_boxes': 65, 'held_out_boxes': 17}
+Some weights of RTDetrForObjectDetection were not initialized from the model checkpoint at /content/weights/rtdetr-r50vd and are newly initialized because the shapes did not match:
+- model.decoder.class_embed.0.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.0.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.1.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.1.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.2.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.2.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.3.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.3.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.4.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.4.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.5.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.5.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.denoising_class_embed.weight: found shape torch.Size([81, 256]) in the checkpoint and torch.Size([4, 256]) in the model instantiated
+- model.enc_score_head.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.enc_score_head.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+{'class_names': ['stop-sign', 'yield-sign', 'speed-limit-sign'], 'device': 'cuda:0', 'adapted': False}
+Re-initialized parameter heads: 15
+{
+  "ap": 0.0,
+  "ap50": 0.0,
+  "per_class_ap50": {
+    "stop-sign": 0.0,
+    "yield-sign": 0.0,
+    "speed-limit-sign": 0.0
+  },
+  "n_references": 17,
+  "max_detections": 100
+}
+[colab] Executing cell 10/15 - rtdetr_detection-26...
+Some weights of RTDetrForObjectDetection were not initialized from the model checkpoint at /content/weights/rtdetr-r50vd and are newly initialized because the shapes did not match:
+- model.decoder.class_embed.0.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.0.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.1.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.1.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.2.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.2.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.3.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.3.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.4.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.4.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.5.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.5.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.denoising_class_embed.weight: found shape torch.Size([81, 256]) in the checkpoint and torch.Size([4, 256]) in the model instantiated
+- model.enc_score_head.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.enc_score_head.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+epoch 1/3  loss 39.5821
+epoch 2/3  loss 25.1714
+epoch 3/3  loss 20.1248
+{
+  "freeze_backbone": true,
+  "backbone_frozen_in_model": true,
+  "trainable_parameters": 19259121,
+  "total_parameters": 42733137,
+  "epochs": 3,
+  "batch_size": 4,
+  "learning_rate": 0.0001,
+  "train_seconds": 11.6,
+  "device": "cuda:0",
+  "epoch_losses": [
+    39.5821,
+    25.1714,
+    20.1248
+  ]
+}
+Loss progression: 39.5821 -> 20.1248
+[colab] Executing cell 11/15 - rtdetr_detection-30...
+{
+  "ap": 0.9344,
+  "ap50": 0.942,
+  "ap75": 0.942,
+  "per_class_ap50": {
+    "stop-sign": 1.0,
+    "yield-sign": 0.991,
+    "speed-limit-sign": 0.835
+  },
+  "n_images": 10,
+  "n_references": 17
+}
+
+Adapted column: 3 epochs, freeze_backbone=True, lr=0.0001; baseline column: 0 epochs (Section 7).
+metric       baseline    adapted     change
+ap             0.0000     0.9344    +0.9344
+ap50           0.0000     0.9420    +0.9420
+ap75           0.0000     0.9420    +0.9420
+
+Zero-training reference on the held-out stop signs:
+{
+  "class": "stop-sign",
+  "held_out_stop_signs": 5,
+  "unadapted_coco_detector": {
+    "ap": 1.0,
+    "ap50": 1.0
+  },
+  "re_headed_baseline": {
+    "ap50": 0.0
+  },
+  "adapted": {
+    "ap": 1.0,
+    "ap50": 1.0
+  }
+}
+[colab] Executing cell 12/15 - rtdetr_detection-33...
+{"image": 0, "truth": ["yield-sign", "yield-sign"], "detections": [["yield-sign", 0.624], ["yield-sign", 0.563], ["yield-sign", 0.392]], "same_label_iou": [0.976, 0.974]}
+{"image": 1, "truth": ["speed-limit-sign", "yield-sign"], "detections": [["yield-sign", 0.602], ["yield-sign", 0.311]], "same_label_iou": [0.0, 0.976]}
+{"image": 2, "truth": ["stop-sign"], "detections": [["stop-sign", 0.404]], "same_label_iou": [0.982]}
+<PIL.Image.Image image mode=RGB size=480x160 at 0x7D7D229E9A90>
+
+[Image saved to: /tmp/tmpzq9pf5ll.png]
+[colab] Executing cell 13/15 - rtdetr_detection-36...
+Exported artifact descriptor: {
+  "path": "outputs/rtdetr_adapter.safetensors",
+  "bytes": 174748756,
+  "sha256": "de0f8e2ababac9ddbb24d9410a2bc82de9e8c2e53bf815b6894a3ae037c684e3",
+  "sidecar": "outputs/rtdetr_adapter.json",
+  "sidecar_sha256": "87b24c7fd44a926c9fdefa7720730662425ab81926426879f7a7d0f2017c4c3e",
+  "format": "rtdetr-adapter-v2",
+  "class_names": [
+    "stop-sign",
+    "yield-sign",
+    "speed-limit-sign"
+  ],
+  "tensors": 812,
+  "training": {
+    "started_from_adapted": false,
+    "train_seconds": 11.6,
+    "epochs": 3,
+    "batch_size": 4,
+    "learning_rate": 0.0001,
+    "seed": 0,
+    "freeze_backbone": true,
+    "trainable_parameters": 19259121,
+    "total_parameters": 42733137,
+    "epoch_losses": [
+      39.58212089538574,
+      25.1713764667511,
+      20.124790906906128
+    ],
+    "final_loss": 20.124790906906128,
+    "loss": "upstream RTDetrForObjectDetection loss (Varifocal + L1 + GIoU)",
+    "device": "cuda:0",
+    "class_names": [
+      "stop-sign",
+      "yield-sign",
+      "speed-limit-sign"
+    ],
+    "reinitialised_tensors": [
+      "model.enc_score_head.bias",
+      "model.enc_score_head.weight",
+      "model.denoising_class_embed.weight",
+      "model.decoder.class_embed.0.bias",
+      "model.decoder.class_embed.1.bias",
+      "model.decoder.class_embed.2.bias",
+      "model.decoder.class_embed.3.bias",
+      "model.decoder.class_embed.4.bias",
+      "model.decoder.class_embed.5.bias",
+      "model.decoder.class_embed.0.weight",
+      "model.decoder.class_embed.1.weight",
+      "model.decoder.class_embed.2.weight",
+      "model.decoder.class_embed.3.weight",
+      "model.decoder.class_embed.4.weight",
+      "model.decoder.class_embed.5.weight"
+    ],
+    "model_id": "PekingU/rtdetr_r50vd",
+    "model_revision": "df939e661d8c52e80608d1ec566561aabd25a4e7"
+  },
+  "base_state_digest": "5263d5521eff3e356f6cd8a371fd5dfb891725beda5f713674f79669115cdc64",
+  "model_id": "PekingU/rtdetr_r50vd",
+  "model_revision": "df939e661d8c52e80608d1ec566561aabd25a4e7"
+}
+Some weights of RTDetrForObjectDetection were not initialized from the model checkpoint at /content/weights/rtdetr-r50vd and are newly initialized because the shapes did not match:
+- model.decoder.class_embed.0.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.0.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.1.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.1.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.2.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.2.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.3.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.3.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.4.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.4.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.decoder.class_embed.5.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.decoder.class_embed.5.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+- model.denoising_class_embed.weight: found shape torch.Size([81, 256]) in the checkpoint and torch.Size([4, 256]) in the model instantiated
+- model.enc_score_head.bias: found shape torch.Size([80]) in the checkpoint and torch.Size([3]) in the model instantiated
+- model.enc_score_head.weight: found shape torch.Size([80, 256]) in the checkpoint and torch.Size([3, 256]) in the model instantiated
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+{'reloaded_source': 'artifact:rtdetr_adapter.safetensors', 'adapted': True, 'class_names': ['stop-sign', 'yield-sign', 'speed-limit-sign']}
+{
+  "images": 13,
+  "queries_per_image": 300,
+  "detections_at_threshold": 36,
+  "max_abs_logit_difference": 0.0,
+  "max_abs_box_difference": 0.0,
+  "tolerance": 0.001
+}
+Fresh reload verification passed: raw outputs on 13 images match within 0.001.
+[colab] Executing cell 14/15 - rtdetr_detection-39...
+Written release outputs:
+  rtdetr_adapter.json                             1,953 bytes
+  rtdetr_adapter.safetensors                174,748,756 bytes
+  rtdetr_detection_annotated.png                 13,027 bytes
+  rtdetr_detection_detections.csv                   182 bytes
+  rtdetr_detection_evaluation_report.json         1,945 bytes
+  rtdetr_detection_input_manifest.json            2,132 bytes
+  rtdetr_detection_new_data.csv                     419 bytes
+  rtdetr_detection_new_data_annotated.png         8,288 bytes
+  rtdetr_detection_result.json                    9,982 bytes
+<PIL.Image.Image image mode=RGB size=480x160 at 0x7D7D22695AC0>
+
+[Image saved to: /tmp/tmputi7wt81.png]
+[colab] Executing cell 15/15 - rtdetr_detection-41...
+Refusal check passed: non-image object -> TypeError: image must be a PIL.Image.Image, got str
+Refusal check passed: out-of-bounds box -> ValueError: record 0 box 0 [0, 0, 9999, 10] outside image bounds (640, 640)
+BYOD image branch is off; set USE_BYOD_IMAGE = True to run inference on custom images.
+BYOD dataset branch is off; set USE_BYOD_DATASET = True to adapt on custom labelled datasets.
+[colab] Saving notebook with outputs to '<local-run-dir>/rtdetr_detection_colab_7456a3c_colab-cli-t4_output.ipynb'...
