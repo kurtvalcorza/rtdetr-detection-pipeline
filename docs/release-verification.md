@@ -146,6 +146,8 @@ they are measurements for the stated runtime, not general estimates.
 
 ## Current status
 
+**Prose kept true across runs (2026-10-25, code commit `a24b044`, notebook commit `34d7254`).** The current blob of `tutorials/rtdetr_detection_colab.ipynb` is `e921b62e6b68225db557c4b0c224b6355df11fa9`, **Candidate, hosted run pending (REL14)**. Markdown only: the troubleshooting range for the adapted AP is now about 0.85 (local CPU) to 0.98 (hosted T4 0.916–0.979), and the worked answers and run-to-run paragraph list every recorded hosted run (Kaggle T4 of `315909a9`, 2026-09-15; Colab T4 of `e2ab4517`, 2026-10-09, and of `0dd61e64` and `becde2c0`, 2026-10-25) beside the labelled 2026-10-09 local CPU worked run, with the Colab epoch-loss ranges and per-class AP50 ranges. The paragraph below describes the previous blob `becde2c0` and stays as history.
+
 **Candidate.** On PR #17 head `2497882` (2026-10-25):
 
 - `tutorials/rtdetr_detection_colab.ipynb`, blob `becde2c0d5e349b9ff5ff43bb72399a4f2f93f68` (tier C review fixes T77-1..T77-3, generated at `0563816`): the default E2E path ran on a hosted Colab T4 on 2026-10-25 in one pass, no restart, 0 errors (record below: held-out AP 0.979 / AP50 0.979 from baseline 0.000; safetensors reload parity 0.0 on 13 images). This PR's run covers the default path only.
