@@ -50,7 +50,7 @@ weights/rtdetr-r50vd/
 
 ## Release status
 
-**Candidate.** Static/unit checks — including the standalone generator parity checks (`tools/build_notebook.py --check`, `tests/test_notebook_parity.py`) — do not constitute clean-runtime notebook evidence. The current notebook blob `e2ab45177aec` (commit `0feefe5`) completed Run all in one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-09 (Colab CLI 0.7.4 sequential execution, 15/15 code cells, 130.4 s wall; held-out AP 0.9452 / AP50 0.9578 from baseline 0.000; reload raw-output parity 0.0 on 13 images); it is recorded in `docs/release-verification.md`. Hosted BYOD (REL12) evidence is still pending. Complete that record against the exact release revision before calling the notebook release-grade.
+**Candidate.** Static/unit checks — including the standalone generator parity checks (`tools/build_notebook.py --check`, `tests/test_notebook_parity.py`) — do not constitute clean-runtime notebook evidence. The current blob `0dd61e64a3cc` (commit `7456a3c`, the safetensors adapter export) executed top to bottom in one pass with no restart and 0 errors on a fresh Colab Tesla T4 on 2026-10-25 (Colab CLI sequential execution, not a browser Run all; 15/15 code cells in the exec log, 111.1 s wall; held-out AP 0.9344 / AP50 0.942 from baseline 0.000; `rtdetr_adapter.safetensors` plus its JSON sidecar reloaded with raw-output parity 0.0 on 13 images); it is recorded in `docs/release-verification.md`. Remaining gates: REL12 (hosted BYOD) and REL2 (a browser run of the interactive journeys). Complete that record against the exact release revision before calling the notebook release-grade.
 
 ## Documentation
 
