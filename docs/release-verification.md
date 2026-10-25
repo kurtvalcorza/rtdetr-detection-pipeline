@@ -146,14 +146,12 @@ they are measurements for the stated runtime, not general estimates.
 
 ## Current status
 
-**Candidate.** On main at `7456a3c` (2026-10-25):
+**Candidate.** On PR #17 head `2497882` (2026-10-25):
 
-- **Pending (this change):** `tutorials/rtdetr_detection_colab.ipynb` blob `becde2c0d5e349b9ff5ff43bb72399a4f2f93f68`, generated at `0563816` from the tier C review fixes (T77-1 worked-answer sources and softened claims, T77-2 DAT9 overlap statement, T77-3 spec 2.5 items). Status **Candidate**; its hosted Colab T4 run is pending, and the 2026-10-25 run below describes the previous blob `0dd61e64` (REL14). Static checks are not clean-runtime evidence.
-
-- `tutorials/rtdetr_detection_colab.ipynb`, blob `0dd61e64a3cc42f8896664d74bbd6a37473f7a17`: the default E2E path ran on a hosted Colab T4 (record below, 2026-10-25). The adapter is exported as `rtdetr_adapter.safetensors` plus `rtdetr_adapter.json` and reloaded from those files.
-- `tutorials/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, blob `6de85e6314e979856a71c0857e6af8a2b24b5e62` (revision `0.4.0-candidate`): the default STANDARD path ran on a hosted Colab T4 (record below, 2026-10-25). FULL (including the multi-seed repeat) has not run on this blob.
+- `tutorials/rtdetr_detection_colab.ipynb`, blob `becde2c0d5e349b9ff5ff43bb72399a4f2f93f68` (tier C review fixes T77-1..T77-3, generated at `0563816`): the default E2E path ran on a hosted Colab T4 on 2026-10-25 in one pass, no restart, 0 errors (record below: held-out AP 0.979 / AP50 0.979 from baseline 0.000; safetensors reload parity 0.0 on 13 images). This PR's run covers the default path only.
+- `tutorials/DIMER_MultiModel_Closed_Set_Object_Detection_Workshop.ipynb`, blob `6de85e6314e979856a71c0857e6af8a2b24b5e62` (revision `0.4.0-candidate`), unchanged by this PR: the default STANDARD path ran on a hosted Colab T4 (record below, 2026-10-25). FULL (including the multi-seed repeat) has not run on this blob.
 - Remaining gates: **REL12** (a hosted BYOD run with one accepted and one refused input) and **REL2** (a browser run of the interactive journeys: forms, BYOD upload). The scripted CLI runs cover the default paths only.
-- Every earlier record in this file describes an earlier blob and is history (REL14), including the 2026-09-15 Kaggle T4 run, the 2026-10-09 Colab CLI run of `e2ab45177aec` and the 2026-10-15 workshop run of `5937db0e`.
+- Every earlier record in this file describes an earlier blob and is history (REL14), including the 2026-10-25 run of `0dd61e64` (`7456a3c`), the 2026-09-15 Kaggle T4 run, the 2026-10-09 Colab CLI run of `e2ab45177aec` and the 2026-10-15 workshop run of `5937db0e`.
 
 Promotion is an integrator decision; this record does not change the status.
 
@@ -341,6 +339,23 @@ Notebook blob `929be36c` (`00130c3`) → new blob on branch `fix/closed-det-work
 - **New DET2 outputs, as designed:** validation-chosen operating points RT-DETR 0.30, YOLOX-S 0.70 (frozen and re-checked at test); group-composition table; label-blind confusion tables (0 cross-class confusions for either model; RT-DETR misses 5 of 8 speed-limit signs at 0.30); display-only class-agnostic pre-adaptation AP (RT-DETR 0.0866, YOLOX-S 0.6122); multi-seed repeat printed as skipped (STANDARD); `byod_status` `disabled`. The export bundle holds 31 files (SHA-256 `d915d3c4…9addd6`).
 - **Verdict:** **PASSED** on the default STANDARD path. This run satisfies "a hosted T4 STANDARD Run all of the new blob" above with the boundary below.
 - **Boundary:** CLI sequential execution, not a browser Run all; forms and uploads not exercised; FULL (including the multi-seed repeat) and real-model BYOD (REL12) still not exercised. Status remains **Candidate**.
+
+### Colab CLI execution of `2497882` (blob `becde2c0`) — 2026-10-25
+
+Queued and executed by a separate maintainer session with the Colab CLI serial suite; the files below are its durable copies. `run_summary.json` records `verdict` `PASS`, `exec_exit_code` 0, `input_unchanged` true, `stop_verified` true and no overrides. The SHA-256 of the executed notebook equals the summary's `executed_sha256` (`d9eb72fb…`), and the blob equals PR #17's blob at `2497882`. Local paths are redacted byte-wise to `<local-run-dir>`; the notebook and summary carried none.
+
+| File (under `docs/execution-evidence/2026-10-25/`) | Captured SHA-256 | Committed SHA-256 |
+|---|---|---|
+| `rtdetr_detection_colab_2497882_colab-cli-t4_default.ipynb` | `d9eb72fb839d717593110894918e5e25c52c6905cdbe8e4da614f659babdb60b` | `d9eb72fb839d717593110894918e5e25c52c6905cdbe8e4da614f659babdb60b` (unchanged, no local path) |
+| `rtdetr_detection_colab_2497882_colab-cli-t4_default_exec.log` | `01e10f5da2aaa51459b965333e4773af1332eedf7e6d4ad6fd8cd93b5f9df4a8` | `d1b6c44334e262b04943bc20ad1bd9142eb9f3b77611c5de383cbe7110871ad1` (2 local-path replacements) |
+| `rtdetr_detection_colab_2497882_colab-cli-t4_default_run_summary.json` | `420300ddf333d5ba775f7cc71ba892b40e90bed0c3942dcd34a67ec689c26f1e` | `420300ddf333d5ba775f7cc71ba892b40e90bed0c3942dcd34a67ec689c26f1e` (unchanged, no local path) |
+
+- **Executor:** Colab CLI `colab exec -f` on a fresh Colab Tesla T4 VM (started 2026-10-25T06:41:22Z, released afterwards). Sequential CLI execution, not a browser Run all; order from the exec log, no execution counts. Kernel Python 3.13.16; isolated uv environment Python 3.12.12, 48 locked packages, built in 62 s; `torch 2.14.0+cu130`, `transformers 4.57.6`; device `cuda:0`. 15/15 code cells logged (cells 3–4 are the carried modules and print nothing), 0 errors, 127.6 s wall.
+- **Printed results:** 4 snapshot files fetched and verified at revision `df939e66…`; COCO scene 3/4 matched (stop sign 0.977, clock 0.965, traffic light 0.931; IoU 0.877 / 0.965 / 0.983, sports ball 0.000); degenerate probes blank 1 at 0.3 (`train` 0.333) / 87 at 0.05, noise 1 at 0.3 (`cat` 0.391) / 254 at 0.05; 40 records / 82 boxes, split 30 / 10 (65 / 17 boxes) with every class in both; baseline AP 0.0; fine-tune 19,259,121 of 42,733,137 parameters, backbone frozen, epoch losses 39.5658 / 25.2743 / 19.1633, `train_seconds` 11.6; held-out AP 0.979 / AP50 0.979 / AP75 0.979 (per-class AP50 stop-sign 1.0, yield-sign 0.937, speed-limit-sign 1.0); zero-training reference on 5 held-out stop signs: unadapted COCO detector AP 1.0, re-headed baseline AP50 0.0, adapted AP 1.0; new-seed images: image 0 both yield signs found (IoU 0.98 / 0.977), image 1 the speed-limit sign missed (same-label IoU 0.0) and the yield sign found (0.99), image 2 the stop sign found (0.983), every adapted score between 0.352 and 0.499.
+- **Safetensors export and reload:** `"path": "outputs/rtdetr_adapter.safetensors", "bytes": 174748756`, `"sha256": "bcd21180204b166bcc10448ffc27e6eec0185ac4ae38ec307f8d75db12e21461"`, `"sidecar": "outputs/rtdetr_adapter.json"`, `"format": "rtdetr-adapter-v2"`, `"tensors": 812`; parity `"images": 13, "queries_per_image": 300, "detections_at_threshold": 24, "max_abs_logit_difference": 0.0, "max_abs_box_difference": 0.0`, then "Fresh reload verification passed: raw outputs on 13 images match within 0.001." 9 release outputs written; both BYOD refusal checks passed, BYOD branches off.
+- **Differences from the 2026-10-25 run of the previous blob `0dd61e64`:** epoch losses 39.58 / 25.17 / 20.12 then, 39.57 / 25.27 / 19.16 now; held-out AP 0.9344 / AP50 0.942 then, 0.979 / 0.979 now; per-class AP50 then 1.0 / 0.991 / 0.835, now 1.0 / 0.937 / 1.0; reload parity counted 36 detections at 0.3 then, 24 now, max difference 0.0 both times; COCO scene, probes, dataset and split identical. Training is not bitwise reproducible across T4 sessions; one seeded split, no dispersion estimate.
+- **Prose numbers checked against this run (REL13, notebook not edited):** The troubleshooting notes in the closing summary say the adapted AP in Section 9 "has ranged from about 0.85 to 0.95 between runs"; this run printed AP 0.979, above that range. Every other number the prose quotes is attributed to the worked CPU run or an earlier blob's hosted run and was not re-measured as such; the shared lines (COCO scene IoU 0.877 / 0.965 / 0.983, probes, dataset, split, 19,259,121 of 42,733,137 parameters, `train_seconds` 11.6, stop-sign reference 1.000) equal this run's output.
+- **Boundary:** CLI sequential execution, not a browser Run all; forms and uploads not exercised; BYOD (REL12) not exercised.
 
 ### Colab CLI executions of `7456a3c` (blobs `0dd61e64`, `6de85e63`) — 2026-10-25
 
