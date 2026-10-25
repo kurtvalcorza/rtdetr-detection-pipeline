@@ -408,7 +408,7 @@ TEMPLATE = {
             "md": (
                 "**What to notice.** Read each row against its `truth`. A `same_label_iou` of 0.0 is a **miss**; more detections of one label than "
                 "that label has objects is a **duplicate** (no NMS, so two queries can fire on one sign); a score just above 0.3 is a detection the "
-                "threshold barely kept. In the worked run (2026-10-09 local CPU, not re-run here) image 0 had three `yield-sign` detections for two signs (one sign found twice), image 1's speed-limit "
+                "threshold barely kept. In the worked run (2026-10-09 local CPU) image 0 had three `yield-sign` detections for two signs (one sign found twice), image 1's speed-limit "
                 "sign was missed and its yield sign was found twice, and two of the kept scores were 0.302. Your table may differ: one hosted T4 run (`e2ab4517`) found all five signs, with two extra `yield-sign` boxes on image 1. The threshold 0.3 was carried over from the COCO model in Section 4; nobody chose it for this three-class model. **Who owns it?** "
                 "You do: a deployment would pick it on its own validation images (for example, the threshold that maximises F1 on the training "
                 "split) and report misses and duplicates at that threshold."
@@ -452,7 +452,7 @@ TEMPLATE = {
         },
         {
             "md": (
-                '<details><summary>Check your reasoning</summary>Exactly 0 in the worked run (2026-10-09 local CPU, not re-run here), on 13 images × 300 queries with 24 detections at the threshold; the hosted T4 runs also printed 0.0, with 26 and 36 detections, because the count depends on the trained weights. Same weights on the same device usually give identical outputs; a GPU may show differences around 1e-6, which is why the check uses a tolerance and does not claim "identical". A difference beyond the tolerance means the artifact does not carry the adapted weights, and the cell stops rather than accepting a broken adapter.</details>'
+                '<details><summary>Check your reasoning</summary>Exactly 0 in the worked run (2026-10-09 local CPU), on 13 images × 300 queries with 24 detections at the threshold; the hosted T4 runs also printed 0.0, with 26 and 36 detections, because the count depends on the trained weights. Same weights on the same device usually give identical outputs; a GPU may show differences around 1e-6, which is why the check uses a tolerance and does not claim "identical". A difference beyond the tolerance means the artifact does not carry the adapted weights, and the cell stops rather than accepting a broken adapter.</details>'
             ),
         },
         # ---------------------------------------------------------------- 12. Outputs & provenance
