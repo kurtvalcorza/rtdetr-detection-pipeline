@@ -1,6 +1,7 @@
 """Final prose pass (Kurt's ruling, 2026-10-26): the flagged expectation sentences are removed or
 rewritten as records of named runs.
-rtdetr: md0 timing and spread promises, md1 unnamed T4 timing. Follow-up: md0 relabels the local CPU run to the earlier revision.
+rtdetr: md0 timing and spread promises, md1 unnamed T4 timing. Follow-up: md0 relabels the local CPU run
+to the earlier revision.
 Fails on PR head d9d4be9.
 """
 import json
