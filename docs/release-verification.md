@@ -146,7 +146,7 @@ they are measurements for the stated runtime, not general estimates.
 
 ## Final prose pass (2026-10-26)
 
-**Code commit `625c1cf`, notebook commit `19eca6f`.** The current blob of `tutorials/rtdetr_detection_colab.ipynb` is `8d1e07752478a977573a6cd5ebceb0e2d7465740`, **Candidate**, with its hosted Colab T4 run pending. Kurt's 2026-10-26 ruling: fix only the prose rule breaks the final evidence flagged; recorded drift stays recorded, not fixed. Markdown only: the opening cells no longer give a time budget or a third-decimal spread claim, and the unnamed T4 timing points at the named runs under Runtime. The runs of blob `8e4a0fb7` and earlier blobs are history (REL14); the records below are kept.
+**Code commit `eac55be`, notebook commit `ea1fadc`.** The current blob of `tutorials/rtdetr_detection_colab.ipynb` is `804342423410eb074aec73695118025dff738569`, **Candidate**, with its hosted Colab T4 run pending. Kurt's 2026-10-26 ruling: fix only the prose rule breaks the final evidence flagged; recorded drift stays recorded, not fixed. Markdown only: the opening cells no longer give a time budget or a third-decimal spread claim, and the unnamed T4 timing points at the named runs under Runtime. The runs of blob `8e4a0fb7` and earlier blobs are history (REL14); the records below are kept; follow-up the same day: md0 relabels the worked answers' local CPU run to the earlier revision (it said this revision). It supersedes blob `8d1e0775` (code commit `625c1cf`, notebook commit `19eca6f`), which was never run.
 
 ## Current status
 
