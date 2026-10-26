@@ -361,7 +361,8 @@ def test_rtd_m1_numbers_are_labelled_and_not_stale():
 
 def test_rtd_m5_docs_describe_the_e2e_notebook_and_spec_22():
     nb = _nb()
-    assert nb["metadata"]["dimer"]["notebook_spec"] == "2.2"
+    assert nb["metadata"]["dimer"]["notebook_spec"] == "2.5"
+    assert nb["metadata"]["dimer"]["notebook_kind"] == "TUTORIAL"
     for doc in ("README.md", "docs/release-verification.md", "STATUS.md"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         assert "TASK-INFERENCE" not in text, doc
