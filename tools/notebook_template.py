@@ -619,17 +619,23 @@ TEMPLATE = {
                 '        raise BYODRefusal(source.name, f\'expected a {{kind}} ending in {{" or ".join(suffixes)}}.\')\n'
                 '    return source\n\n'
                 'if USE_BYOD_IMAGE:\n'
-                '    # DAT20: every problem with your image (path, upload, decoding, validation) stops here as one Refused: line.\n'
+                '    # DAT20: every problem with your image (path, upload, decoding, validation) stops here as one Refused: line. Caught:\n'
+                '    # ValueError (validate_inputs: size, threshold) and OSError only around Image.open/load, where it means Pillow cannot\n'
+                '    # open or decode the file. TypeError is not caught: validate_inputs always gets a PIL image here, so a TypeError is a\n'
+                '    # bug. Detection and anything else keep their traceback.\n'
                 "    byod_name = Path(str(BYOD_IMAGE_PATH).strip()).name if str(BYOD_IMAGE_PATH).strip() else '(no file)'\n"
                 '    try:\n'
                 "        byod_source = byod_file(BYOD_IMAGE_PATH, 'image file (PNG, JPEG or WebP)')\n"
                 '        byod_name = byod_source.name\n'
-                '        byod_image = Image.open(byod_source)\n'
-                '        byod_image.load()\n'
+                '        try:\n'
+                '            byod_image = Image.open(byod_source)\n'
+                '            byod_image.load()\n'
+                '        except OSError as exc:\n'
+                "            raise BYODRefusal(byod_name, f'not an image file Pillow can open ({{type(exc).__name__}}: {{exc}}); use a PNG, JPEG or WebP file.') from None\n"
                 "        print(validate_inputs(byod_image, threshold=threshold, names=[byod_source.name])['verdict'])\n"
                 '    except BYODRefusal as exc:\n'
                 '        refuse_byod(exc.file_name, exc.reason, BYOD_IMAGE_RESULTS)\n'
-                '    except (TypeError, ValueError, OSError) as exc:\n'
+                '    except ValueError as exc:\n'
                 '        refuse_byod(byod_name, exc, BYOD_IMAGE_RESULTS)\n'
                 '    byod_res = pipe.detect(byod_image, threshold=threshold)\n'
                 "    for det in byod_res['detections'][:20]:\n"
@@ -639,18 +645,25 @@ TEMPLATE = {
                 "    print('BYOD image branch is off; set USE_BYOD_IMAGE = True to run inference on custom images.')\n\n"
                 'if USE_BYOD_DATASET:\n'
                 '    # DAT20: every problem with your dataset (path, upload, annotations, images, classes, validation, split) stops here as one Refused: line.\n'
+                '    # Caught: ValueError (load_detection_dataset, validate_dataset, split_dataset and check_split_coverage raise it for bad\n'
+                '    # input, undecodable images included) and, only around load_detection_dataset, OSError (a file that cannot be read)\n'
+                '    # and zipfile.BadZipFile (a corrupt .zip). TypeError and KeyError are not caught: the loader always builds complete\n'
+                '    # records of numbers and strings, so either would be a bug. Fine-tuning, export and anything else keep their traceback.\n'
                 "    byod_name = (Path(str(BYOD_DATASET_PATH).strip()).name or str(BYOD_DATASET_PATH).strip()) if str(BYOD_DATASET_PATH).strip() else '(no file)'\n"
                 '    try:\n'
                 "        byod_dataset_source = BYOD_DATASET_PATH if str(BYOD_DATASET_PATH).strip() else byod_file('', 'dataset .zip', ('.zip',))\n"
                 '        byod_name = Path(str(byod_dataset_source)).name or byod_name\n'
-                '        byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)\n'
+                '        try:\n'
+                '            byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)\n'
+                '        except (OSError, zipfile.BadZipFile) as exc:\n'
+                "            raise BYODRefusal(byod_name, f'the dataset cannot be read ({{type(exc).__name__}}: {{exc}}); give a folder or a .zip holding annotations.csv and its images.') from None\n"
                 "        byod_classes = tuple(c.strip() for c in str(BYOD_CLASS_NAMES).split(',') if c.strip()) or byod_found_classes\n"
                 '        byod_manifest = validate_dataset(byod_records, byod_classes, epochs=EPOCHS)\n'
                 '        byod_train, byod_held = split_dataset(byod_records, train_fraction=1.0 - HOLDOUT, seed=SEED)\n'
                 "        byod_coverage = check_split_coverage({{'train': byod_train, 'held_out': byod_held}}, byod_classes)\n"
                 '    except BYODRefusal as exc:\n'
                 '        refuse_byod(exc.file_name, exc.reason, BYOD_DATASET_RESULTS)\n'
-                '    except (TypeError, ValueError, KeyError, OSError, zipfile.BadZipFile) as exc:\n'
+                '    except ValueError as exc:\n'
                 '        refuse_byod(byod_name, exc, BYOD_DATASET_RESULTS)\n'
                 '    print(json.dumps(byod_manifest, indent=2))\n'
                 "    print('Classes per split:', byod_coverage)\n"

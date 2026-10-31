@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -300,3 +301,99 @@ def test_default_path_does_not_refuse(cells, tmp_path, monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "BYOD image branch is off" in out and "BYOD dataset branch is off" in out and "Refused:" not in out
     assert ns["byod_res"] == "old"
+
+
+# --- the catch is narrow: only bad input is refused; an internal TypeError/KeyError/OSError keeps its traceback -------
+
+
+def test_the_byod_catches_are_narrow_in_the_notebook_source(cells):
+    source = _source(_byod_cell(cells))
+    branches = source.split("if USE_BYOD_IMAGE:\n", 1)[1]
+    caught = re.findall(r"^\s*except (.+?)(?: as \w+)?:$", branches, flags=re.M)
+    assert caught and not [c for c in caught if "TypeError" in c or "KeyError" in c], caught
+    assert branches.count("    except ValueError as exc:\n") == 2
+    assert "        try:\n            byod_image = Image.open(byod_source)\n            byod_image.load()\n        except OSError as exc:\n" in branches
+    assert "        try:\n            byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)\n        except (OSError, zipfile.BadZipFile) as exc:\n" in branches
+
+
+@pytest.mark.parametrize(
+    ("error", "rule"),
+    [(PermissionError(13, "Permission denied"), "the dataset cannot be read (PermissionError: "), (None, "the dataset cannot be read (BadZipFile: Bad CRC-32")],
+    ids=["unreadable", "corrupt zip"],
+)
+def test_an_unreadable_or_corrupt_dataset_is_still_one_refused_line(cells, tmp_path, monkeypatch, error, rule):
+    import zipfile
+
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    ns = _namespace(tmp_path, monkeypatch)
+    raised = error if error is not None else zipfile.BadZipFile("Bad CRC-32 for file 'a.png'")
+
+    def failing_loader(_path):
+        raise raised
+
+    ns["load_detection_dataset"] = failing_loader
+    _one_line(_run_refused(_cell_code(cells, dataset=str(tmp_path / "data.zip")), ns), "data.zip", rule)
+    _dataset_refused(ns, tmp_path)
+
+
+def test_a_truncated_image_is_still_one_refused_line(cells, tmp_path, monkeypatch):
+    import io
+
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    buffer = io.BytesIO()
+    Image.new("RGB", (64, 64), (200, 30, 30)).save(buffer, format="PNG")
+    (tmp_path / "cut.png").write_bytes(buffer.getvalue()[:-40])
+    ns = _namespace(tmp_path, monkeypatch)
+    _one_line(_run_refused(_cell_code(cells, image=str(tmp_path / "cut.png")), ns), "cut.png", "not an image file Pillow can open")
+    assert not set(EARLIER_IMAGE) & set(ns)
+
+
+@pytest.mark.parametrize("error", [TypeError("internal helper bug"), KeyError("internal key"), OSError("internal I/O bug")], ids=["TypeError", "KeyError", "OSError"])
+def test_an_internal_error_in_the_dataset_branch_keeps_its_traceback(cells, tmp_path, monkeypatch, error):
+    import traceback
+
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    ns = _namespace(tmp_path, monkeypatch)
+    records = [{"image": Image.new("RGB", (64, 64), (i, 0, 0)), "boxes": [[1.0, 1.0, 30.0, 30.0]], "labels": ["stop-sign"], "file": f"{i}.png"} for i in range(4)]
+    ns["load_detection_dataset"] = lambda _path: (records, ("stop-sign",))
+
+    def broken_coverage(splits, class_names):
+        raise error
+
+    ns["check_split_coverage"] = broken_coverage
+    with pytest.raises(type(error)) as caught:
+        exec(compile(_cell_code(cells, dataset=str(tmp_path)), "<section 13>", "exec"), ns)
+    assert caught.value is error and not getattr(caught.value, "dimer_refusal", False)
+    rendered = "".join(traceback.format_exception(caught.value))
+    assert rendered.startswith("Traceback") and "broken_coverage" in rendered and "Refused:" not in rendered
+    assert ns["byod_adapted"] == "old" and (tmp_path / "outputs" / "byod_result.json").exists()  # nothing is cleared for an internal error
+
+
+def test_a_typeerror_inside_the_dataset_loader_is_not_turned_into_a_refusal(cells, tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    ns = _namespace(tmp_path, monkeypatch)
+
+    def buggy_loader(_path):
+        raise TypeError("loader bug")
+
+    ns["load_detection_dataset"] = buggy_loader
+    with pytest.raises(TypeError, match="loader bug") as caught:
+        exec(compile(_cell_code(cells, dataset=str(tmp_path)), "<section 13>", "exec"), ns)
+    assert not getattr(caught.value, "dimer_refusal", False)
+
+
+def test_an_internal_typeerror_in_the_image_branch_keeps_its_traceback(cells, tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, "google.colab", None)
+    Image.new("RGB", (64, 64), (10, 120, 10)).save(tmp_path / "ok.png")
+    ns = _namespace(tmp_path, monkeypatch)
+
+    def buggy_validate_inputs(image, **kwargs):
+        if "names" not in kwargs:  # the rejection demo at the top of the cell
+            return package.validate_inputs(image, **kwargs)
+        raise TypeError("validator bug")
+
+    ns["validate_inputs"] = buggy_validate_inputs
+    with pytest.raises(TypeError, match="validator bug") as caught:
+        exec(compile(_cell_code(cells, image=str(tmp_path / "ok.png")), "<section 13>", "exec"), ns)
+    assert not getattr(caught.value, "dimer_refusal", False)
+    assert ns["byod_res"] == "old"  # nothing is cleared for an internal error
