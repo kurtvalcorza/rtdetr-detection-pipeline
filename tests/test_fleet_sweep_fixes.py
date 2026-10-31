@@ -223,7 +223,7 @@ def test_swp_g_checkpoint_answers_quote_the_recorded_run():
 
 def _byod_file(nb: dict):
     source = _cell(nb, "def byod_file(")
-    helper = source[source.index("def byod_file(") : source.index("if USE_BYOD_IMAGE:")]
+    helper = source[source.index("class BYODRefusal(ValueError):") : source.index("if USE_BYOD_IMAGE:")]
     ns = {"os": os, "Path": Path}
     exec(helper, ns)
     return ns["byod_file"]
@@ -234,10 +234,10 @@ def test_swp_b_byod_image_path_reads_a_file_and_refusals_name_the_file(tmp_path,
     good = tmp_path / "mine.png"
     good.write_bytes(b"x")
     assert helper(str(good), "image file") == good
-    with pytest.raises(FileNotFoundError, match="missing.png"):
+    with pytest.raises(ValueError, match="missing.png"):  # DAT20: a BYODRefusal
         helper(str(tmp_path / "missing.png"), "image file")
     _no_colab(monkeypatch)
-    with pytest.raises(RuntimeError, match="only in Google Colab"):
+    with pytest.raises(ValueError, match="only in Google Colab"):  # DAT20: a BYODRefusal
         helper("", "image file")
 
 

@@ -551,7 +551,7 @@ TEMPLATE = {
                 "or set `BYOD_CLASS_NAMES` to a comma-separated list to fix it (then every label must be in that list). Limits: at most 500 images, "
                 "100 boxes per image and 1000 classes; every image needs at least one box; no image twice; and after the split (`HOLDOUT` from "
                 "Section 7) both the train and held-out parts must contain every class — in practice at least four images per class. Each refusal "
-                "names the row, file or record and the rule. Results go to `outputs/byod_result.json` and `outputs/byod_adapter.safetensors` with its sidecar `outputs/byod_adapter.json`."
+                "names the row, file or record and the rule. A refused input stops the cell with one line, `Refused: <file>: <reason and fix>`, and removes that branch's earlier results from the session and from `outputs/`, so nothing from an earlier run can pass as a result of your input; fix the named file and run the cell again. Results go to `outputs/byod_result.json` and `outputs/byod_adapter.safetensors` with its sidecar `outputs/byod_adapter.json`."
             ),
             "code": (
                 'USE_BYOD_IMAGE = False  # @param {{type:"boolean"}}\n'
@@ -568,47 +568,92 @@ TEMPLATE = {
                 "        fn()\n"
                 "    except (TypeError, ValueError) as exc:\n"
                 "        print(f'Refusal check passed: {{desc}} -> {{type(exc).__name__}}: {{exc}}')\n\n"
+                'import zipfile\n\n'
+                'class BYODRefusal(ValueError):\n'
+                '    """A refused BYOD input: ``BYODRefusal(file_name, reason_and_fix)``."""\n\n'
+                '    dimer_refusal = True\n\n'
+                '    def __init__(self, file_name, reason):\n'
+                '        super().__init__(f"{{file_name}}: {{reason}}")\n'
+                '        self.file_name = file_name\n'
+                '        self.reason = reason\n\n'
+                '    def _render_traceback_(self):\n'
+                '        return [f"Refused: {{self}}"]\n\n\n'
+                '# The results an earlier run of each branch left in this session and in outputs/. A refused input removes them (DAT20),\n'
+                '# so none of them can pass as a result of the refused input.\n'
+                "BYOD_IMAGE_RESULTS = (('byod_source', 'byod_image', 'byod_res', 'det'), ())\n"
+                'BYOD_DATASET_RESULTS = (\n'
+                "    ('byod_dataset_source', 'byod_records', 'byod_found_classes', 'byod_classes', 'byod_manifest', 'byod_train', 'byod_held', 'byod_pipe',\n"
+                "     'byod_baseline', 'byod_run', 'byod_adapted', 'byod_descriptor', 'byod_reloaded', 'byod_images', 'byod_live', 'byod_fresh', 'byod_max_diff'),\n"
+                "    ('byod_result.json', 'byod_adapter.safetensors', 'byod_adapter.json'),\n"
+                ')\n\n\n'
+                'def refuse_byod(file_name, reason, results):\n'
+                '    """Remove the branch\'s earlier results, then stop the cell with one Refused: line naming the file and the fix."""\n'
+                '    names, files_written = results\n'
+                '    for name in names:\n'
+                '        globals().pop(name, None)\n'
+                '    for name in files_written:\n'
+                '        (OUTPUTS / name).unlink(missing_ok=True)\n'
+                "    reason = str(reason).removeprefix(f'{{file_name}}: ').rstrip('. ')\n"
+                "    if 'again' not in reason:\n"
+                "        reason += '; fix the input and run this cell again'\n"
+                "    raise BYODRefusal(file_name, reason + ' (the earlier results of this branch were removed).') from None\n\n\n"
                 'def byod_file(path, kind, suffixes=()):\n'
                 '    """BYOD path first (works on Colab, Kaggle and Jupyter); on Colab an empty path opens the upload dialog."""\n'
                 '    if str(path).strip():\n'
                 '        source = Path(str(path).strip()).expanduser()\n'
                 '        if not source.is_file():\n'
-                "            raise FileNotFoundError(f'BYOD path {{str(source)!r}} does not exist or is not a file (relative paths start at {{os.getcwd()}}); give the path of one {{kind}}.')\n"
+                "            raise BYODRefusal(source.name or str(source), f'BYOD path {{str(source)!r}} does not exist or is not a file (relative paths start at {{os.getcwd()}}); give the path of one {{kind}}.')\n"
                 '    else:\n'
                 '        try:\n'
                 '            from google.colab import files\n'
                 '        except ImportError:\n'
-                "            raise RuntimeError(f'BYOD is on but its path field is empty, and the upload dialog exists only in Google Colab: copy the {{kind}} into this runtime (or attach it as a Kaggle dataset) and set the path field.') from None\n"
-                '        uploaded = files.upload()\n'
+                "            raise BYODRefusal('(no file)', f'BYOD is on but its path field is empty, and the upload dialog exists only in Google Colab: copy the {{kind}} into this runtime (or attach it as a Kaggle dataset) and set the path field.') from None\n"
+                '        uploaded = files.upload() or {{}}\n'
                 '        if len(uploaded) != 1:\n'
-                "            raise ValueError(f'Upload exactly one {{kind}} (received {{len(uploaded)}} files; a cancelled dialog sends none). Run this cell again.')\n"
+                "            raise BYODRefusal('(no file)', f'Upload exactly one {{kind}} (received {{len(uploaded)}} files; a cancelled dialog sends none). Run this cell again.')\n"
                 '        name, payload = next(iter(uploaded.items()))\n'
                 "        source = Path('work') / Path(name).name\n"
                 '        source.parent.mkdir(parents=True, exist_ok=True)\n'
                 '        source.write_bytes(payload)\n'
                 '    if suffixes and not source.name.lower().endswith(tuple(suffixes)):\n'
-                '        raise ValueError(f\'{{source.name}}: expected a {{kind}} ending in {{" or ".join(suffixes)}}.\')\n'
-                '    return source\n'
-                '\n'
+                '        raise BYODRefusal(source.name, f\'expected a {{kind}} ending in {{" or ".join(suffixes)}}.\')\n'
+                '    return source\n\n'
                 'if USE_BYOD_IMAGE:\n'
-                "    byod_source = byod_file(BYOD_IMAGE_PATH, 'image file (PNG, JPEG or WebP)')\n"
-                '    byod_image = Image.open(byod_source)\n'
-                '    byod_image.load()\n'
-                "    print(validate_inputs(byod_image, threshold=threshold, names=[byod_source.name])['verdict'])\n"
-                "    byod_res = pipe.detect(byod_image, threshold=threshold)\n"
+                '    # DAT20: every problem with your image (path, upload, decoding, validation) stops here as one Refused: line.\n'
+                "    byod_name = Path(str(BYOD_IMAGE_PATH).strip()).name if str(BYOD_IMAGE_PATH).strip() else '(no file)'\n"
+                '    try:\n'
+                "        byod_source = byod_file(BYOD_IMAGE_PATH, 'image file (PNG, JPEG or WebP)')\n"
+                '        byod_name = byod_source.name\n'
+                '        byod_image = Image.open(byod_source)\n'
+                '        byod_image.load()\n'
+                "        print(validate_inputs(byod_image, threshold=threshold, names=[byod_source.name])['verdict'])\n"
+                '    except BYODRefusal as exc:\n'
+                '        refuse_byod(exc.file_name, exc.reason, BYOD_IMAGE_RESULTS)\n'
+                '    except (TypeError, ValueError, OSError) as exc:\n'
+                '        refuse_byod(byod_name, exc, BYOD_IMAGE_RESULTS)\n'
+                '    byod_res = pipe.detect(byod_image, threshold=threshold)\n'
                 "    for det in byod_res['detections'][:20]:\n"
-                "        print(f\"{{det['label']:>16s}} {{det['score']:.3f}}\")\n"
+                '        print(f"{{det[\'label\']:>16s}} {{det[\'score\']:.3f}}")\n'
                 "    print(evaluation_report(byod_res, None, sample_kind='byod')['verdict'])\n"
-                "else:\n"
+                'else:\n'
                 "    print('BYOD image branch is off; set USE_BYOD_IMAGE = True to run inference on custom images.')\n\n"
-                "if USE_BYOD_DATASET:\n"
-                "    byod_dataset_source = BYOD_DATASET_PATH if str(BYOD_DATASET_PATH).strip() else byod_file('', 'dataset .zip', ('.zip',))\n"
-                "    byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)\n"
-                "    byod_classes = tuple(c.strip() for c in str(BYOD_CLASS_NAMES).split(',') if c.strip()) or byod_found_classes\n"
-                "    byod_manifest = validate_dataset(byod_records, byod_classes, epochs=EPOCHS)\n"
-                "    print(json.dumps(byod_manifest, indent=2))\n"
-                "    byod_train, byod_held = split_dataset(byod_records, train_fraction=1.0 - HOLDOUT, seed=SEED)\n"
-                "    print('Classes per split:', check_split_coverage({{'train': byod_train, 'held_out': byod_held}}, byod_classes))\n"
+                'if USE_BYOD_DATASET:\n'
+                '    # DAT20: every problem with your dataset (path, upload, annotations, images, classes, validation, split) stops here as one Refused: line.\n'
+                "    byod_name = (Path(str(BYOD_DATASET_PATH).strip()).name or str(BYOD_DATASET_PATH).strip()) if str(BYOD_DATASET_PATH).strip() else '(no file)'\n"
+                '    try:\n'
+                "        byod_dataset_source = BYOD_DATASET_PATH if str(BYOD_DATASET_PATH).strip() else byod_file('', 'dataset .zip', ('.zip',))\n"
+                '        byod_name = Path(str(byod_dataset_source)).name or byod_name\n'
+                '        byod_records, byod_found_classes = load_detection_dataset(byod_dataset_source)\n'
+                "        byod_classes = tuple(c.strip() for c in str(BYOD_CLASS_NAMES).split(',') if c.strip()) or byod_found_classes\n"
+                '        byod_manifest = validate_dataset(byod_records, byod_classes, epochs=EPOCHS)\n'
+                '        byod_train, byod_held = split_dataset(byod_records, train_fraction=1.0 - HOLDOUT, seed=SEED)\n'
+                "        byod_coverage = check_split_coverage({{'train': byod_train, 'held_out': byod_held}}, byod_classes)\n"
+                '    except BYODRefusal as exc:\n'
+                '        refuse_byod(exc.file_name, exc.reason, BYOD_DATASET_RESULTS)\n'
+                '    except (TypeError, ValueError, KeyError, OSError, zipfile.BadZipFile) as exc:\n'
+                '        refuse_byod(byod_name, exc, BYOD_DATASET_RESULTS)\n'
+                '    print(json.dumps(byod_manifest, indent=2))\n'
+                "    print('Classes per split:', byod_coverage)\n"
                 "    byod_pipe = RTDetrDetectionPipeline.from_pretrained(weights_dir=WEIGHTS_DIR, class_names=byod_classes, seed=SEED)\n"
                 "    byod_baseline = byod_pipe.evaluate(byod_held)\n"
                 "    byod_run = byod_pipe.finetune(byod_train, epochs=EPOCHS, batch_size=BATCH_SIZE, learning_rate=LEARNING_RATE,\n"
