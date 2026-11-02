@@ -115,7 +115,7 @@ def test_pins_agree_across_lock_bootstrap_and_runtime_cell():
         assert f"\n{pin} \\\n" in text, pin
     # Former exact pins are unchanged; the two former ranges are fixed inside their ranges.
     for pin in ["torch==2.14.0", "torchvision==0.29.0", "torchaudio==2.11.0", "transformers==4.57.6",
-                "safetensors==0.8.0", "numpy==2.1.3", "pillow==11.3.0", "huggingface-hub==0.36.2", "scipy==1.18.1"]:
+                "safetensors==0.8.0", "numpy==2.1.3", "pillow==13.0.0", "huggingface-hub==0.36.2", "scipy==1.18.1"]:
         assert pin in pins
 
 
